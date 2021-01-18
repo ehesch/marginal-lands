@@ -1,0 +1,1907 @@
+---
+title: "Supplemental Methods: Rising agricultural input costs foreshadows challenges for sustainable food production"
+author: "Ellen Esch, "
+date: "`r format(Sys.time(), '%d %B %Y')`"
+
+output:
+  github_document:
+    toc: yes
+urlcolor: blue
+
+# output:
+#     word_document:
+#     toc: true
+#     toc_depth: 3
+# urlcolor: blue
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "/Users/ellen/Desktop/Ellen/Guelph/Project_Marginal Lands/OntarioFarms/files")
+getwd()
+```
+
+```{r include = F, message=FALSE}
+# setwd("/Users/ellen/Desktop/Ellen/Guelph/Project_Marginal Lands/OntarioFarms/files")
+
+library("tidyverse")
+library("cowplot")
+library("readxl")
+library("gridExtra")
+library("scales")
+library("lubridate")
+library("zoo")
+library("segmented")
+library("plotly")
+library("kableExtra")
+
+base_breaks <- function(n = 10) {
+  function(x) {
+    axisTicks(log10(range(x, na.rm = TRUE)), log = TRUE, n = n)
+  }
+}
+
+ df_canexpense_current <- tibble(Area = "Canada",Data = "Farm Operating Expenses, current", 
+                                 TableID = "32-10-0049-01", 
+                                 Location = "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=3210004901",
+                                 Start = 1971, End = 2018)
+ 
+ df_canexpense_historic <- tibble(Area = "Canada",
+                                  Data = "Farm Operating Expenses, historic", 
+                                  TableID = "32-10-0278-01", 
+                                  Location = "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=3210027801", 
+                                  Start = 1926, End = 1972, 
+                                  Notes = "Pesticide applications in the years 1926-1947 include containers and could not be separated from the sole cost of pesticides")
+ 
+ df_canfert_historic <- tibble(Area = "Canada",
+                               Data = "Archived - Fertilizer shipments", 
+                               TableID = "32-10-0274-01", 
+                               Location = "https://www150.statcan.gc.ca/t1/tbl1/en/cv.action?pid=3210027401", 
+                               Start = 1967, End = 2005)
+ 
+ df_canfert_current <- tibble(Area = "Canada",
+                              Data = "Fertilizer shipments", 
+                              TableID = "32-10-0039-01", Location = "https://www150.statcan.gc.ca/t1/tbl1/en/cv.action?pid=3210003901", 
+                              Start = 2006, End = 2018)
+ 
+df_canexptype <- tibble(Area= "Canada",
+                        Data= "Average operating revenues and expenses of farms, by farm type", 
+                        TableID = "2-10-0078-01",
+                        Location= "https://www150.statcan.gc.ca/t1/tbl1/en/cv.action?pid=3210007801",
+                        Start = 2001, End = 2014)
+
+df_canyield <- tibble(Area = "Canada",Data = "Canadian Yield, Production, Area Seeded", 
+                      TableID = "32-10-0359-01", 
+                      Location = "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=3210035901", 
+                      Start = 1908, End = 2019, 
+                      Notes = "Also market prices from 1926-1984")
+
+df_canpop_historic <- tibble(Area = "Canada",
+                             Data = "Canadian Population, Historic", 
+                             TableID = "17-10-0063-01 ", 
+                             Location = "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1710006301", 
+                             Start = 1852, End =1977)
+
+ df_canpop_current <- tibble(Area = "Canada",Data = "Canadian Population, Current", 
+                             TableID = "17-10-0005-01", 
+                             Location = "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1710000501", 
+                             Start = 1971, End = 2019)
+ 
+df_worldpop <- tibble(Area = "World",Data = "World Population", 
+                      TableID = "NA", 
+                      Location = "https://population.un.org/wpp/DataQuery/", 
+                      Start = 1950)
+
+df_canprices_ <- tibble(Area = "Canada",Data = "Farm product prices, crops", 
+                        TableID = "32-10-0077-01", 
+                        Location = "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=3210007701", 
+                        Start = 1980, End = 2019, 
+                        Notes = 'supplemented by Table 32-10-0359-01')
+
+df_cancpi <- tibble(Area = "Canada",Data = "Canadian Consumer Price Index", 
+                    TableID = "18-10-0005-01", 
+                    Location = "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810000501", 
+                    Start = 1914, End = 2018) #NOT UPDATED
+
+df_canfarmcpi_historic <- tibble(Area = "Canada",
+                                 Data = "Farm input price index 1986=100", 
+                                 TableID = "18-10-0110-01", 
+                                 Location = "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810011001", 
+                                 Start = 1961, End = 1999, 
+                                 Notes = "from 1961 to 1970, crop production index is the mean of (fertilizer,seeds)")
+
+df_canfarmcpi_mid <- tibble(Area = "Canada",
+                            Data = "Farm input price index (1992=100)", 
+                            TableID = "18-10-0123-01", 
+                            Location = "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810012301", 
+                            Start = 1998, End = 2007, Notes = "")
+
+df_canfarmcpi_current <- tibble(Area = "Canada",
+                                Data = "Farm input price index, quarterly", 
+                                TableID = "18-10-0258-01", 
+                                Location = "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810025801", 
+                                Start = 2002, End = 2018)#NOT UPDATED
+
+df_uscpi<- tibble(Area = "United States",
+                  Data = "US CPI", 
+                  TableID = "", 
+                  Location = "https://download.bls.gov/pub/time.series/cu/", 
+                  Start = 1947, End = 2019)
+
+df_uscrp <- tibble(Area = "United States",
+                   Data = "CRP Enrollment and Rental Payments by State, 1986-2017",
+                   Start =1986, End=2017, 
+                   TableID = "none", 
+                   Location = "https://www.fsa.usda.gov/programs-and-services/conservation-programs/reports-and-statistics/conservation-reserve-program-statistics/index")
+
+df_canfarmtype <- tibble(Area = "Canada",
+                         Data= "Average operating revenues and expenses of farms, by farm type", 
+                         TableID= "2-10-0078-01", 
+                         Start =1993,End=2014, 
+                         Location= "https://www150.statcan.gc.ca/t1/tbl1/en/cv.action?pid=3210007801")
+
+df_canincome<- tibble(Area = "Canada", 
+                      Data= 'Net farm income',
+                      TableID= "32-10-0052-01",
+                      Start =1926, End=2017, 
+                      Location= "https://www150.statcan.gc.ca/t1/tbl1/en/cv.action?pid=3210005201")
+
+
+dataused <- bind_rows(df_canexpense_historic, 
+                      df_canexpense_current, 
+                      df_canfert_historic, 
+                      df_canfert_current, 
+                      df_canexptype,
+                      df_canyield,
+                      df_canprices_,
+                      df_canpop_historic, 
+                      df_canpop_current, 
+                      df_worldpop, 
+                      df_cancpi, 
+                      df_canfarmcpi_historic, 
+                      df_canfarmcpi_mid, 
+                      df_canfarmcpi_current, 
+                      df_uscpi,
+                      df_uscrp, 
+                      df_canfarmtype,
+                      df_canincome) 
+```
+
+## Introduction
+This document contains the code to reproduce the analysis within the manuscript entitled: Rising agricultural input costs foreshadows challenges for sustainable food production.
+
+## Reproducibility
+- All analyses were run on R 3.5.1.
+- Packages `tidyverse` (version 1.2.1), `cowplot` (version 0.8.0), `readxl` (version 1.0.0), `gridExtra` (version 2.3), `scales` (version 0.5.0) `lubridate` (version 1.7.4) and `zoo` (version 1.8.0) and `segmented` (version 3.0) were used in this analyses.
+- The following datasets were used:
+
+```{r echo=F}
+kable(dataused) %>%
+  kable_styling("striped", full_width = F) %>%
+  pack_rows("Inputs", 1, 5) %>% 
+  pack_rows("Outputs", 6, 6) %>%
+  pack_rows("Market Prices", 7, 7) %>%
+  pack_rows("Population", 8, 10) %>%
+  pack_rows("Inflation Adjustments, CPI", 11, 15) %>%
+  pack_rows("Other", 16, 18)
+```
+
+
+# Inflation metrics to use
+
+```{r inflation corrections for canada, include =F}
+FarmIPI_historic <- read_csv("1810011001_databaseLoadingData.csv", col_type = cols()) %>%
+  rename(Geography = GEO, Year = REF_DATE) %>%
+  select(Year, Geography, `Price index, components`, VALUE) %>%
+  mutate(Year = paste(Year, "-01", sep = "")) %>%
+  mutate(Year = as.Date(Year, "%Y-%m-%d")) %>%
+  spread(`Price index, components`, VALUE) %>%
+  rowwise() %>%
+  mutate(`Crop production` = ifelse(Year < "1970-10-02", (Seeds + Fertilizer) / 2, `Crop production`)) %>% #prior to 1970, only "seeds" and "fertilizer" categories were given, thus the average is taken for the "Crop production" category
+  gather(`Price index, components`, VALUE, -Year, -Geography) %>%
+  filter(!is.na(VALUE)) %>%
+  mutate(data = "historic") %>%
+  filter(`Price index, components` == "Crop production") %>%
+  mutate(VALUE = VALUE / (((96.4 + 101.6 + 101.6 + 101.3) / 4)) * 100) # must convert to 1992=100 to join with intermediate data
+
+FarmIPI_intermediate <- read_csv("1810012301_databaseLoadingData.csv", col_type = cols()) %>%
+  rename(Geography = GEO, Year = REF_DATE) %>%
+  select(Year, Geography, `Price index`, VALUE) %>%
+  mutate(Year = paste(Year, "-01-01", sep = "")) %>%
+  mutate(Year = as.Date(Year, "%Y-%m-%d")) %>%
+  rename(`Price index, components` = `Price index`) %>%
+  mutate(data = "intermed") %>%
+  filter(`Price index, components` == "Crop production")
+
+FarmIPI_old <- full_join(FarmIPI_historic, FarmIPI_intermediate) %>% # 100=1992, harmonized
+  mutate(VALUE = VALUE / (135.7) * 100) # index; 100=2002
+
+FarmIPI_current <- read_csv("18100258.csv", col_types = cols()) %>%
+  filter(GEO== 'Canada') %>%
+  rename(Geography = GEO, Year = REF_DATE) %>%
+  select(Year, Geography, `Price index`, VALUE) %>%
+  mutate(Year = paste(Year, "-01", sep = "")) %>%
+  mutate(Year = as.Date(Year, "%Y-%m-%d")) %>%
+  rename(`Price index, components` = `Price index`) %>%
+  mutate(data = "current") %>%
+  filter(`Price index, components` == "Crop production") %>%
+  mutate(VALUE = VALUE / ((60.4 + 59.7 + 59.3 + 60.3) / 4) * 100) # index; 100=2002
+
+FarmIPI <- filter(FarmIPI_current, `Price index, components` == "Crop production") %>% 
+  full_join(FarmIPI_old) %>% 
+  mutate(type = "farm input price index",
+         YEAR = year(Year)) %>% 
+  group_by(YEAR, Geography, type) %>% 
+  summarise(VALUE = mean(VALUE)) %>% 
+  rename(Year = YEAR)
+
+InflationCPI <- read_csv("./1810000501_databaseLoadingData.csv", col_type = cols()) %>%
+  rename(Geography = GEO, Year = REF_DATE, value = VALUE, type = `Products and product groups`) %>%
+  select(Geography, Year, value, type)
+
+CAN_cpi <- full_join(InflationCPI, (FarmIPI %>% rename(value = VALUE))) %>% spread(type, value) %>% 
+  mutate(value = `All-items`) %>% 
+  select(Geography, Year, value)
+
+Fig_CPI <- full_join(InflationCPI, (FarmIPI %>% rename(value = VALUE))) %>% 
+  ggplot(aes(x = Year, y = value, col = type)) + 
+  geom_point() + 
+  labs(y = "CPI", col = "CPI category")
+
+Fig_CPIcorrelation <- full_join(InflationCPI, (FarmIPI %>% rename(value = VALUE))) %>% 
+  spread(type,value) %>%
+  ggplot(aes(x = `All-items`, y = `farm input price index`)) + 
+  geom_point() + 
+  geom_smooth(fill =NA,method= 'lm',col = 'black') +
+  labs(y = "Farm CPI", x = "All items CPI")
+
+CORRCPI_df<- full_join(InflationCPI, (FarmIPI %>% rename(value = VALUE))) %>% 
+  spread(type,value)  
+
+CORRCPI<-cor.test(CORRCPI_df$`All-items`,CORRCPI_df$`farm input price index`)$estimate
+
+CAD2018 <- CAN_cpi$value[CAN_cpi$Year == 2018]
+
+CADUSD=1.297
+
+```
+
+
+## Inflation-adjustments
+- All values are presented in USD 2018. 
+- First, inflation-adjusted values were calculated in CAD using a general consumer price index (all-items). The All-Items index was preferred over a "farm-input price" index given that this analysis compares dollars across sectors (market price for crops, price for fertilizers, pesticides, etc) ant that the all-items index spans the entirety of our Canadian data, while the farm input price index begins in 1961. We compare the "all items" CPI to a farm specific CPI and show high correlation (```r CORRCPI```). Finally, as shown below, using the all-items index rather than the 'crop production' price indices is a conservative estimate, and our "gap" would be even larger if using the crop production index.
+- Next, we converted from 2018 CAD to 2018 USD using conversion rate of ```r CADUSD``` which was obtained from https://www.irs.gov/individuals/international-taxpayers/yearly-average-currency-exchange-rates. Conversion into USD happened after adjusting for inflation given that annual exhange rates are only reported since 1970 by the USDA (https://www.ers.usda.gov/data-products/agricultural-exchange-rate-data-set/agricultural-exchange-rate-data-set/).
+
+
+```{r CPIfig, eval = T , echo=F, fig.width=6, fig.height =4, warning = F}
+Fig_CPI
+Fig_CPIcorrelation
+```
+
+
+
+```{r FAOcompile, include =F}
+#### FAO Fertilizer Data
+FAO_fert_historic <- read_csv('./Inputs_FertilizersArchive_E_All_Data_(Normalized).csv',
+                            col_types = cols()) %>% 
+	filter(Element == 'Agricultural Use') %>%
+	filter(Item == 'Nitrogenous fertilizers'|
+	         Item == 'Phosphate fertilizers'|
+	         Item == 'Potash fertilizers') %>%
+	select(-`Year Code`, -Flag, -Element) %>%
+	filter(Year != 2002)
+
+FAO_fert_current <-read_csv('./Inputs_FertilizersNutrient_E_All_Data_(Normalized).csv',
+                            col_types = cols()) %>% 
+	filter(Element == 'Agricultural Use') %>%
+  select(-`Year Code`, -Flag,-Element)
+	FAO_fert_current$Item[FAO_fert_current$Item == 'Nutrient nitrogen N (total)']<-'Nitrogenous fertilizers'
+	FAO_fert_current$Item[FAO_fert_current$Item == 'Nutrient phosphate P2O5 (total)']<-'Phosphate fertilizers'
+	FAO_fert_current$Item[FAO_fert_current$Item == "Nutrient potash K2O (total)"]<-'Potash fertilizers'
+
+FAO_fert <- bind_rows(FAO_fert_current,
+                      FAO_fert_historic) %>% 
+  group_by(Area,`Area Code`,Year) %>% 
+  summarise(Value =sum(Value, na.rm = T)) %>% 
+  mutate(Element = 'NPKfert') #%>% filter(Item == 'Nitrogenous fertilizers')
+
+#### FAO Production Data
+fao_cereals<-tibble(Item = c('Barley','Buckwheat','Canary seed','Cereals, nes','Fonio','Grain, mixed','Maize','Millet','Oats','Quinoa','Rice, paddy','Rye','Sorghum','Triticale','Wheat'))
+fao_oilcrops<-tibble(Item = c('Cottonseed','Seed cotton','Oilseeds nes','Melonseed','Linseed','Safflower seed','Hempseed','Kapok fruit','Plam kernals','Coconuts','Poppy seed','Sunflower seed','Oil palm fruit','Groundnuts, with shell','Mustard seed','Rapeseed','Soybeans','Sesame seed'))
+fao_crop_filter<-bind_rows(fao_cereals, fao_oilcrops)
+
+FAO_prod<-read_csv('./Production_Crops_E_All_Data_(Normalized).csv',
+                   col_types = cols(), na= c("<NA>","")) %>% 
+  filter(Item %in% fao_crop_filter$Item) %>%
+  filter(Element != 'Feed') %>%
+  select(-Flag, -`Year Code`, -Unit, -`Element Code`) %>% 
+	group_by(Area,Element,Year) %>%
+  summarise(Value = sum(Value, na.rm = T))  %>%
+  filter(Area == 'Africa' | Area == 'Americas' | Area == 'Asia' | Area == 'Europe' | Area == 'Oceania')
+
+#### FAO Population Data
+FAO_pop <- read_csv('Population_E_All_Data_(Normalized).csv', col_types = cols()) %>% 
+  filter(Element == "Total Population - Both sexes", Year <= 2017, Year >= 1961) %>% 
+  filter(Area == 'Africa' |
+           Area == 'Americas' |
+           Area == 'Asia' | 
+           Area == 'Europe' | 
+           Area == 'Oceania' | 
+           Area == 'World') %>%
+  mutate(Value = Value * 1000) %>% 
+  select(Area, Element, Value, Year)
+
+#### FAO Price Data
+FAO_countries <-
+  read_csv('FAOSTAT_data_10-20-2017 Country Groups.csv', 
+           col_types = cols()) %>% 
+  rename(Area = Country, 
+         `Area Code` = `Country Code`)
+
+US_cpi <- read_xlsx('US_CPI.xlsx') %>%
+  filter(series_id == 'CUUR0000SA0') %>% #All items in U.S. city average, all urban consumers
+  group_by(year, series_id) %>%
+  summarise(value = mean(value, na.rm = T)) %>%
+  rename(Year = year, CPI = value)
+
+USD2018=US_cpi$CPI[US_cpi$Year==2018]
+
+FAO_price_exclude1 = tibble(Area = "Venezuela (Bolivarian Republic of)", 
+                            Year=2016, 
+                            Exclude =1) #due to rampant inflation
+FAO_price_exclude2 = tibble(Area= "Mexico",
+                            Item = "Melonseed", 
+                            Exclude =1) #super high
+
+FAO_price <- read_csv('./Prices_E_All_Data_(Normalized).csv', 
+                      col_types = cols()) %>%  
+	filter((Element == 'Producer Price (USD/tonne)')) %>% 
+  filter(Item %in% fao_crop_filter$Item) %>%
+  full_join(FAO_price_exclude1) %>%
+  filter(is.na(Exclude)) %>%
+  select(-Exclude) %>%
+  full_join(FAO_price_exclude2) %>%
+  filter(is.na(Exclude)) %>%
+  full_join(FAO_countries) %>%
+  select(-Flag, -`Year Code`, -Unit, -`Element Code`) %>%
+  filter(`Country Group`== 'Africa'|
+           `Country Group`== 'Americas'|
+           `Country Group`== 'Asia'|
+           `Country Group`== 'Europe'|
+           `Country Group` == 'Oceania') %>%
+  group_by(`Country Group`, Element, Year) %>%
+  filter(!is.na(Year)) %>%
+  summarise(Value = mean(Value, na.rm = T)) %>%
+  rename(Area = `Country Group`) %>%
+  full_join(US_cpi) %>%
+  mutate(Value2018USD = (USD2018 / CPI) * Value) %>%
+  select(Area, Element, Year, Value2018USD) %>%
+  rename(Value = Value2018USD) %>%
+  ungroup() %>%
+  mutate(Element = 'Producer Price (2018USD/tonne)')
+
+#crop specific indices
+FAO_crop_price = read_csv('./Prices_E_All_Data_(Normalized).csv',
+                          col_types = cols()) %>%  
+	filter((Element == 'Producer Price (USD/tonne)')) %>% 
+  filter(Item %in% fao_crop_filter$Item) %>%
+  full_join(FAO_price_exclude1) %>%
+  filter(is.na(Exclude)) %>%
+  select(-Exclude) %>%
+  full_join(FAO_price_exclude2) %>%
+  filter(is.na(Exclude)) %>%
+  full_join(FAO_countries) %>% 
+  select(-Flag, -`Year Code`, -Unit, -`Element Code`) %>%
+  filter(`Country Group`== 'Africa'|
+           `Country Group`== 'Americas'|
+           `Country Group`== 'Asia'|
+           `Country Group`== 'Europe'|
+           `Country Group`== 'Oceania') %>%
+  group_by(`Country Group`, Element, Year, Item) %>%
+  filter(!is.na(Year)) %>%
+  summarise(Value = mean(Value, na.rm = T)) %>%
+  full_join(US_cpi) %>%
+  filter(Year>=1991,!is.na(`Country Group`)) %>%
+  mutate(Value2018USD = (USD2018 / CPI) * Value) %>%
+  select(`Country Group`, Element, Year, Value2018USD, Item) %>%
+  rename(Value = Value2018USD) %>%
+  ungroup() %>%
+  mutate(Element = 'Producer Price (2018USD/tonne)')
+
+  ### Join FAO data
+FAO_combo<- bind_rows(FAO_price, 
+                      FAO_prod, 
+                      FAO_fert, 
+                      FAO_pop) %>%
+  filter(Area == 'Africa' |
+           Area == 'Americas' |
+           Area == 'Asia' |
+           Area == 'Europe' |
+           Area == 'Oceania')
+
+FAO_index = FAO_combo %>% 	
+  group_by(Area,Element) %>%
+  summarize(Year=min(Year, na.rm = T)) %>% 
+  left_join(FAO_combo) %>% 
+  rename(IndexValue =Value) %>% 
+  select(-Year) %>% 
+  full_join(FAO_combo) %>% 
+  mutate(Index =Value/IndexValue)
+
+###Plot
+Fig1B<-ggdraw(ggplot((FAO_index %>% 
+                            filter(Element == 'Seed'|
+                                     Element == 'NPKfert'|
+                                     Element == 'Production'|
+                                     Element == "Producer Price (2018USD/tonne)"|
+                                     Element == "Total Population - Both sexes") %>% 
+                        filter(Area!= 'World')), #filter(Elemenet == "Yield")
+                         aes(x = Year, y =Index,col =Element,shape =Element, fill =Element)) +
+	geom_hline(yintercept =(1),lty =2,lwd=.2) +
+	scale_y_continuous(trans =log_trans(), breaks =base_breaks() ,labels =prettyNum) +
+  facet_wrap(~Area) +theme_cowplot() +
+  geom_smooth(fill =NA,method= 'gam', formula=y~s(x), alpha=.2,lwd=.5) + 
+  labs(x = 'Year', y =expression(Index~"("*Year[n]~"= "~1*")")) +
+  geom_point(size =.2) +
+  scale_shape_manual(values = c('NPKfert'=21,
+                                'Total Population - Both sexes'=22,
+                                'Production'=23,
+                                'Seed'=25,
+                                'Producer Price (2018USD/tonne)'=21),
+                     breaks = c('NPKfert',
+                                'Total Population - Both sexes',
+                                'Production',
+                                'Seed',
+                                'Producer Price (2018USD/tonne)'),
+                     labels = c("Fertilizer inputs (MT)",
+                                'Population (#)',
+                                'Production output (MT)',
+                                'Crop Area (ha)',
+                                'Market Price ($/t)'), 
+                     name = 'Metric') +
+  scale_fill_manual(values = c('NPKfert'= 'darkgreen',
+                               'Total Population - Both sexes'= "#d95f02",
+                               'Production'= 'orange2',
+                               'Seed'= "#e7298a",
+                               'Producer Price (2018USD/tonne)'= "#666666"),
+                    breaks = c('NPKfert',
+                               'Total Population - Both sexes',
+                               'Production','Seed',
+                               'Producer Price (2018USD/tonne)'),
+                    labels = c("Fertilizer inputs (MT)",
+                               'Population (#)',
+                               'Production output (MT)',
+                               'Crop Area (ha)',
+                               'Market Price ($/t)'), 
+                    name = 'Metric') + 
+  scale_color_manual(values = c('NPKfert'= 'darkgreen',
+                                'Total Population - Both sexes'= "#d95f02",
+                                'Production'= 'orange2',
+                                'Seed'= "#e7298a",
+                                'Producer Price (2018USD/tonne)'= "#666666"),
+                     breaks = c('NPKfert',
+                                'Total Population - Both sexes',
+                                'Production','Seed',
+                                'Producer Price (2018USD/tonne)'),
+                     labels = c("Fertilizer inputs (MT)",
+                                'Population (#)',
+                                'Production output (MT)',
+                                'Crop Area (ha)',
+                                'Market Price ($/t)'), 
+                     name = 'Metric') +
+	  theme(legend.position = c(.7, .2), 
+        legend.box.background = element_rect(),
+        legend.spacing = unit(.8, 'cm'),
+        text = element_text(size = 7),
+        axis.text = element_text(size = 7),
+        legend.key.size = unit(.1, 'cm'),
+        legend.margin = margin(c(1, 1, 1, 2))) +
+	  guides(color = guide_legend(override.aes = list(size = .8)),
+	         fill = guide_legend(override.aes = list(size = .8)),
+	         shape = guide_legend(override.aes = list(size = .8)))) #+
+# draw_label('b',.04,.925, fontface = 'bold',size =9)
+
+#Summary Statistics
+WorldSum = FAO_combo %>% group_by(Element,Year) %>% summarise(TotalValue =sum(Value)) 
+WorldPopIndex = WorldSum$TotalValue[WorldSum$Year==2016&WorldSum$Element == "Total Population - Both sexes"]/WorldSum$TotalValue[WorldSum$Year==1961& WorldSum$Element == "Total Population - Both sexes"]
+WorldProdIndex = WorldSum$TotalValue[WorldSum$Year==2016&WorldSum$Element == "Production"]/WorldSum$TotalValue[WorldSum$Year==1961& WorldSum$Element == "Production"]
+WorldFertIndex = WorldSum$TotalValue[WorldSum$Year==2016&WorldSum$Element == "NPKfert"]/WorldSum$TotalValue[WorldSum$Year==1961& WorldSum$Element == "NPKfert"]
+WorldSeededIndex = WorldSum$TotalValue[WorldSum$Year==2016&WorldSum$Element == "Seed"]/WorldSum$TotalValue[WorldSum$Year==1961& WorldSum$Element == "Seed"]
+
+```
+## Global analysis with FAO data
+- Obtained from http://www.fao.org/faostat/en/#data
+
+#### Fertilizer data
+- Year 2002 excluded from the archive as it is reported in current dataset.
+- Only N, P, and K fertilizers are used
+- Chosen to evaluate based on broad "Area" definition (continent)
+
+#### Production data
+- Data were subset to include 33 major field crops which are classified as cereals and oilcrops. Other types of crops were excluded due to poor continuity. Crops include:
+
+```{r echo=F}
+as.list(fao_crop_filter) 
+```
+
+#### World summary statistics
+- World fertilizer usage increased by ```r WorldFertIndex``` between 1961 and 2015
+- World production increased by ```r WorldProdIndex``` between 1961 and 2015
+- World population increased by ```r WorldPopIndex``` between 1961 and 2015
+- World area seeded in cereals and oilseeds increased by ```r WorldSeededIndex``` between 1961 and 2015
+
+
+```{r canada data, include =F}
+###geo filter
+geo<-tibble(Geography = c('Canada','Newfoundland and Labrador','Prince Edward Island','Nova Scotia','New Brunswick','Quebec','Ontario','Manitoba','Saskatchewan','Alberta','British Columbia'))
+
+###Candian Crop Production Data
+CAN_prod<-read_csv('./32100359.csv',col_type = cols(), na= c('..', 'x','r')) %>%
+  filter(GEO== 'Canada') %>%
+  filter(`Harvest disposition`== "Average farm price (dollars per tonne)" |
+           `Harvest disposition`== "Average yield (kilograms per hectare)" |
+           `Harvest disposition`== "Harvested area (hectares)" |
+           `Harvest disposition`== "Production (metric tonnes)"|
+           `Harvest disposition`== "Seeded area (hectares)"|
+           `Harvest disposition`== "Total farm value (dollars)") %>%
+  filter(`Type of crop`== "Barley"|
+           `Type of crop` == "Beans, all dry (white and coloured)"|
+           `Type of crop` == "Borage seed"|
+           `Type of crop` == "Buckwheat"|
+           `Type of crop` == "Canary seed"|
+           `Type of crop` == "Canola (rapeseed)"|
+           `Type of crop` == "Caraway seed"|
+           `Type of crop` == "Chick peas"|
+           `Type of crop` == "Coriander seed"|
+           `Type of crop` == "Corn for grain"|
+           `Type of crop` == "Corn for silage"|
+           `Type of crop` == "Faba beans"|
+           `Type of crop` == "Flaxseed"|
+           `Type of crop` == "Hemp"|
+           `Type of crop` == "Lentils"|
+           `Type of crop` == "Mixed grains"|
+           `Type of crop` == "Mustard seed"|
+           `Type of crop` == "Oats"|
+           `Type of crop` == "Peas, dry"|
+           `Type of crop` == "Rye, all"|
+           `Type of crop` == "Safflower"|
+           `Type of crop` == "Soybeans"|
+           `Type of crop` == "Sugar beets"|
+           # `Type of crop` == "Summerfallow"|
+           `Type of crop` == "Sunflower seed"|
+           `Type of crop` == "Tame hay"|
+           `Type of crop` == "Triticale"|
+           `Type of crop` == "Wheat, all") %>%
+  mutate(VALUE = ifelse(SCALAR_ID == 0, VALUE,
+	                    (ifelse(SCALAR_ID == 3, (VALUE * 1000), NA)))) %>%
+  rename(Year = REF_DATE,
+         Harvest.disposition = `Harvest disposition`,
+         Geography = GEO,
+         Crop = `Type of crop`) %>%
+	filter(Crop!= "Rye, all including fall rye remaining", 
+	       Crop!= "Rye, fall seeded in previous fall",
+	       Crop!= "Wheat, all excluding durum wheat",
+	       Crop!= "Wheat, all including winter wheat remaining",
+	       Crop!= "Wheat, winter seeded in fall" ) %>%
+  mutate(Crop = recode(Crop, 
+                       'Beans, all dry (white and coloured)' = 'Beans, all dry',
+                       'Canola (rapeseed)' = 'Canola',
+                       'Faba beans' = 'Fababeans',
+                       'Corn for silage' = 'Corn, fodder',
+                       'Corn for grain' = "Grain corn")) #new addition
+	
+##crops included
+	levels(as.factor(CAN_prod$Crop)) 
+##production costs included
+	costfilter<- tibble(ExpenseType = c('Commercial seed', "Fertilizer and lime", "Pesticides")) #irrigation starts in 1938. #fuel starts in 1951 and a decade is missing (1970's). 
+
+##Farm expenses
+CAN_expenses_current<-read_csv('./32100049.csv',col_type = cols(), na= '..') %>%
+  filter(GEO== 'Canada') %>%
+	mutate(Cost =ifelse(SCALAR_ID==0,VALUE,(ifelse(SCALAR_ID==3,(VALUE*1000),NA)))) %>%
+	rename(Year=REF_DATE,Geography =GEO) %>%
+	select(Geography,Year,`Expenses and rebates`,Cost) %>% 
+	spread(`Expenses and rebates`,Cost) %>%
+	mutate(`Fertilizer and lime`=
+	         if_else(is.na(`Fertilizer and lime`),
+	                 (`Fertilizer, after rebates` + `Fertilizer rebates` + `Lime, after rebates` + `Lime rebates`),
+	                 `Fertilizer and lime`)) %>%
+	mutate(`Pesticides`=
+	         if_else(is.na(`Pesticides`),
+	                 (`Pesticides, after rebates` + `Pesticide rebates`),
+	                 `Pesticides`)) %>%
+	mutate(`Total expenses before rebates`=
+	         if_else(is.na(`Total expenses before rebates`),
+	                 (`Total rebates` + `Total expenses after rebates`),
+	                 `Total expenses before rebates`)) %>%
+	mutate(`Cash wages, room and board, before rebates`=
+	         if_else(is.na(`Cash wages, room and board, before rebates`),
+	                 (`Cash wages, after rebates` + ifelse(is.na(`Cash wage rebates`),
+	                                                       0,`Cash wage rebates`)),
+	                 `Cash wages, room and board, before rebates`)) %>%
+	mutate(`Commercial seed`=
+	         if_else(is.na(`Commercial seed`),
+	                 (`Commercial seed, after rebates` + `Commercial seed rebates`),
+	                 `Commercial seed`)) %>%
+  mutate(`Machinery fuel` = 
+           ifelse(is.na(`Machinery fuel`), 
+                  (`Machinery fuel, after rebates` + `Machinery fuel rebates`), 
+                  `Machinery fuel`)) %>%
+  mutate(`Commercial feed` = 
+           ifelse(is.na(`Commercial feed`), 
+                  (`Commercial feed, after rebates` + `Commercial feed rebates`), 
+                  `Commercial feed`)) %>%
+  mutate(`Interest` = ifelse(is.na(`Interest`), 
+                             (`Interest, after rebates` + `Interest rebates`), 
+                             `Interest`)) %>%
+  gather(ExpenseType, Cost, -Geography, -Year) %>%
+	filter(ExpenseType == "Commercial seed" |
+	         ExpenseType == "Commercial seed rebates"|
+	         ExpenseType == "Fertilizer and lime"|
+	         ExpenseType == "Fertilizer and lime rebates" |
+	         ExpenseType == 'Pesticides'|
+	         ExpenseType == "Pesticide rebates")
+  
+CAN_expenses_historic <-read_csv('3210027801_databaseLoadingData.csv',
+                                 col_type = cols()) %>%
+  mutate(Cost = ifelse(SCALAR_ID == 0,
+                       VALUE,
+                       (ifelse(SCALAR_ID == 3, (VALUE * 1000), NA)))) %>%
+  rename(Year = REF_DATE, 
+         Geography = GEO) %>%
+  select(Geography, Year, `Expenses and rebates`, Cost) %>% 
+  spread(`Expenses and rebates`, Cost) %>%
+  rename(`Fertilizer and lime`=`Fertilizer and limestone`) %>%
+  mutate(`Pesticides` = if_else(is.na(Pesticides),
+                                (`Pesticides and containers` - ifelse(is.na(`Containers`),
+                                                                      0, `Containers`)),
+                                Pesticides)) %>%
+  gather(ExpenseType, Cost, -Geography, -Year) %>%
+  filter(ExpenseType %in% costfilter$ExpenseType)
+
+CAN_expenses<-rbind(CAN_expenses_current, 
+                    CAN_expenses_historic) %>% 
+  mutate(ExpenseType = as.factor(ExpenseType)) %>% 
+	filter(ExpenseType %in% costfilter$ExpenseType) %>% 
+	left_join(CAN_cpi) %>%
+  mutate(truedol = (CAD2018 / value) * Cost  ) %>% 
+	filter(!is.na(Cost)) 
+
+#### Join Total Canadian Farm Inputs/Outputs
+INPUTS <- CAN_expenses %>% 
+  filter(ExpenseType == "Commerical seed" | 
+           ExpenseType == "Fertilizer and lime" | 
+           ExpenseType == "Pesticides") %>%
+  group_by(Geography, Year) %>% 
+  summarise(Value = sum(truedol, na.rm = T)) %>% 
+  mutate(Metric = "InputCost.CAD2018") 
+
+OUTPUTS <- CAN_prod %>% 
+  filter(Harvest.disposition == "Production (metric tonnes)") %>%
+  group_by(Year, Geography, Harvest.disposition) %>%
+  summarise(Value = sum(VALUE, na.rm = T)) %>%
+  rename(Metric = Harvest.disposition) %>%
+  mutate(Metric = 'Production')
+AREA <- CAN_prod %>%
+  filter(Harvest.disposition == "Seeded area (hectares)") %>%
+  group_by(Year, Geography, Harvest.disposition) %>%
+  summarise(Value = sum(VALUE, na.rm = T)) %>%
+  rename(Metric = Harvest.disposition) %>%
+  mutate(Metric = 'Seeded area')
+
+gap2 <- bind_rows(INPUTS, OUTPUTS, AREA) %>% 
+	spread(Metric,Value) %>% 
+  mutate(DolperB = (InputCost.CAD2018) / Production, 
+         BperDol = Production / InputCost.CAD2018,
+         DolperHA = (InputCost.CAD2018 / `Seeded area`)) %>% 
+  filter(InputCost.CAD2018 > 0,
+         Production > 0,
+         Year >= 1926,
+         Geography == 'Canada')
+
+###Relationship between inputs and outputs; Best fit
+gap22 <- gap2 %>% mutate(x =InputCost.CAD2018/1e9/CADUSD, y =Production/1e6)
+r.linear<-(lm(y~ x,data=gap22))
+r.poly<-(lm(y~poly(x),data=gap22))
+r.quad<-(lm(y~ x +I(x ^2),data=gap22))
+r.exp<-(lm(y~log(x),data=gap22))
+r.seg<-segmented(lm(y~x,data=gap22),seg.Z=~x) #uses maximum likelihood to fit
+AIC(r.linear,r.quad,r.poly,r.exp,r.seg)
+
+Break <- (r.seg$psi[, 2])# r.seg$psi
+BreakError<-(r.seg$psi[,3])#
+
+Fig1C<- ggdraw(gap22 %>% 
+  ggplot(aes(x =x, y =y, fill = Year)) + #,col =DR
+	stat_smooth(inherit.aes =F,data=filter(gap22,x<=Break), aes(x =x, y =y),method = "lm", formula = y ~ x,  color = "black",level =.95,lty =2, lwd=.25) + 
+	stat_smooth(inherit.aes =F,data=filter(gap22,x>=Break), aes(x =x, y =y),method = "lm", formula = y ~ x,  color = "black",level =.95,lty =2, lwd=.25) +
+	 geom_point(shape =21, size = .8, col = "black") +  
+	stat_smooth(inherit.aes =F,data=filter(gap22,x<Break), aes(x =x, y =y),method = "lm", formula = y ~ x,  color = "black",level =.95,lty =2, lwd=.25, fill=NA) + 
+	stat_smooth(inherit.aes =F,data=filter(gap22,x>Break), aes(x =x, y =y),method = "lm", formula = y ~ x,  color = "black",level =.95,lty =2, lwd=.25, fill = NA) +
+  	theme(text =element_text(size =7), axis.text =element_text(size =7)) +
+	scale_fill_gradient(low = "blue", high = "green", name = 'Year',labels = c(1926,1950,1975, 2000, 2018),breaks = c(1926,1950,1975, 2000, 2018)) +
+	guides(fill =guide_colorbar(barheight =4.5)) +
+    scale_y_continuous(breaks = c(25,50,75,100,125)) +
+    scale_x_continuous(breaks = c(0, 2,4,6,8)) +
+	labs(y = 'Production (million tonnes)',x = 'Input Costs (USD 2018, billions)') +
+  theme_cowplot() +  
+    	geom_point(aes(x =(Break), y =73),col = 'black',pch=1,size =2) +geom_segment(aes(x =((Break)-(BreakError)),xend=((Break) +(BreakError)), y =73, yend=73),col = "black") +
+  theme(legend.spacing=unit(.8,'cm'),
+        text =element_text(size =7),
+        axis.text =element_text(size =7),
+        legend.key.size =unit(.1,'cm'),
+        legend.margin=margin(c(1,1,1, 2)))) +
+    draw_label('b',.04,.925, fontface = 'bold',size =9)
+
+	small =filter(gap22,x<Break);summary(lm(y~x,small))
+	large =filter(gap22,x>Break);summary(lm(y~x,large))
+	arrange(small,Year) %>% data.frame()
+summary(small)
+summary(large)	
+	
+### Growth in Population
+CanadaPop_new<-read_csv('./17100005.csv',col_types = cols(), na= '..') %>% 
+  filter(GEO== 'Canada', Sex == 'Both sexes', `Age group`== 'All ages') %>%
+  rename(Year=REF_DATE,Area=GEO,Population=VALUE) %>% 
+  select(Area,Year,Population)
+
+CanadaPop_historic<-read_csv('./1710006301_databaseLoadingData.csv',col_types = cols()) %>% mutate(VALUE=(VALUE*1000),SCALAR_FACTOR= 'units',SCALAR_ID=0) %>% rename(Year=REF_DATE,Area=GEO,Population=VALUE) %>% filter(Year<1971,Year>=1926) %>% select(Area,Year,Population)
+Population<- bind_rows(CanadaPop_new,CanadaPop_historic) %>% mutate(CanPopIndex =Population/CanadaPop_historic$Population[CanadaPop_historic$Year==1926]) %>% arrange(Year)
+
+#Market Price Data
+MarketPrice_current = read_csv('32100077.csv',col_type = cols()) %>%
+  filter(`Farm products`== "Barley [1151141]"|
+           `Farm products`== "Canadian Wheat Board, barley excluding payments"|
+           `Farm products`== "Canadian Wheat Board, durum excluding payments"|
+           `Farm products`== "Canadian Wheat Board, selected barley excluding payments"|
+           `Farm products`== "Canadian Wheat Board, wheat excluding payments"|
+           `Farm products`== "Canary seeds [11511555]"|
+           `Farm products`== "Canola (including rapeseed) [113111]"|
+           `Farm products`== "Corn for grain [1151111]"|
+           `Farm products`== "Dry peas [114314]"|
+           `Farm products`== "Durum wheat [112111211]"|
+           `Farm products`== "Flaxseed [115122111]"|
+           `Farm products`== "Lentils [114312]"|
+           `Farm products`== "Non-board wheat (except durum wheat)"|
+           `Farm products`== "Oats [115113111]"|
+           `Farm products`== "Ontario wheat excluding payments"|
+           `Farm products`== "Rye [1151152]"|
+           `Farm products`== "Soybeans [1151211]"|
+           `Farm products`== "Wheat (except durum wheat) [1121111]") %>%
+  filter(UOM== 'Dollars per metric tonne', 
+         `Farm products`!= "Barley for animal feed", #extra detail
+         `Farm products`!= "Barley for malt and other human consumption", #extra detail
+         `Farm products`!= "Canadian Wheat Board, barley including payments", #including payments = like subsidy, so exclude
+         `Farm products`!= "Canadian Wheat Board, durum including payments", #including payments = like subsidy, so exclude
+         `Farm products`!= "Canadian Wheat Board, selected barley including payments", #including payments = like subsidy, so exclude
+         `Farm products`!= "Canadian Wheat Board, wheat including payments", #including payments = like subsidy, so exclude
+         `Farm products`!= "Ontario wheat including payments" , #including payments = like subsidy, so exclude
+         `Farm products`!= "Wheat (except durum wheat), milling", #extra detail
+         `Farm products`!= "Wheat (except durum wheat), other") %>% #extra detail
+  separate(REF_DATE,into= c("Year","Month")) %>%
+  mutate(Year=as.numeric(Year)) %>%
+  mutate(`Farm products`=ifelse((`Farm products`== "Canadian Wheat Board, durum excluding payments"|
+                                    `Farm products`== "Canadian Wheat Board, wheat excluding payments"|
+                                    `Farm products`== "Non-board wheat (except durum wheat)"|
+                                    `Farm products`== "Wheat (except durum wheat) [1121111]"|
+                                    `Farm products`== "Durum wheat [112111211]"|
+                                    `Farm products`== 'Ontario wheat excluding payments'),
+                                 'Wheat, all', `Farm products`)) %>%  #including payments are a subsidy-like payment, so using payments excluded only
+  mutate(`Farm products`=ifelse((`Farm products`== "Barley [1151141]"|
+                                   `Farm products`== "Canadian Wheat Board, barley excluding payments"|
+                                   `Farm products`== "Canadian Wheat Board, selected barley excluding payments"),'Barley',`Farm products`)) %>% 
+  group_by(Year,GEO,`Farm products`) %>% 
+  summarise(VALUE=mean(VALUE, na.rm = T)) %>%
+  rename(Crop= "Farm products") %>% 
+  ungroup() %>%
+  group_by(Year,Crop) %>% 
+  summarise(DolPerMetricTonne =mean(VALUE, na.rm = T)) %>%
+  mutate(Crop = recode(Crop, 'Canola (including rapeseed) [113111]' = "Canola",
+                       'Corn for grain [1151111]' = "Grain corn",
+                       'Dry peas [114314]' = "Peas, dry",
+                       'Canary seeds [11511555]' = "Canary seeds",
+                       'Oats [115113111]' = "Oats",
+                       'Lentils [114312]' = "Lentils",
+                       'Soybeans [1151211]' = "Soybeans",
+                       'Flaxseed [115122111]' = "Flaxseed",
+                       'Rye [1151152]' = "Rye, all"))
+
+MarketPrice_historic<- CAN_prod %>% 
+  filter(Harvest.disposition== 'Average farm price (dollars per tonne)',Geography == 'Canada') %>% 
+  select(Crop,Year,VALUE) %>% 
+  rename(DolPerMetricTonne =VALUE) %>% 
+  filter(!is.na(DolPerMetricTonne)) %>%
+  mutate(Crop= recode(Crop, 'Corn for grain' = "Grain corn"))
+
+### Crop Yield
+AvgFarmYield<-CAN_prod %>% 
+	filter(Harvest.disposition == 'Average yield (kilograms per hectare)',Geography == 'Canada') %>% 
+	group_by(Year,Crop) %>% 
+	summarise(MetricTonneperHA=(mean(VALUE, na.rm = T)/1000)) %>% 
+	select(Crop,Year,MetricTonneperHA) %>%
+  mutate(Crop= recode(Crop, 'Corn for grain' = "Grain corn"))
+  
+###Acres Planted
+SumFarmArea<-CAN_prod %>% 
+	filter(Harvest.disposition== 'Seeded area (hectares)',Geography == 'Canada',Harvest.disposition>0) %>%
+	group_by(Crop,Year) %>% 
+	summarise(SeededArea=sum(VALUE, na.rm = T)) %>%
+  ungroup() %>%
+  mutate(Crop= recode(Crop, 'Corn for grain' = "Grain corn"))
+
+##merge all; 
+marketprice_All<- bind_rows(MarketPrice_current, MarketPrice_historic) %>% 
+	full_join(CAN_cpi) %>% select(-Geography) %>%
+	mutate(Dol2018perMetricTonne = ((CAD2018/value)* DolPerMetricTonne)) %>% 
+	filter(!is.na(value)) %>%
+  rename(AnnualDolPerMetricTonne = DolPerMetricTonne) %>%
+  select(-value) %>%
+  left_join(AvgFarmYield)
+
+canpricefilter <- marketprice_All %>% filter(!is.na(Dol2018perMetricTonne)) %>% 
+  group_by(Crop) %>% 
+  summarise(Max =max(Year),Min=min(Year)) %>%
+  mutate(Duration = Max-Min) %>% 
+  filter(Duration >= 50) %>% #filter to include crops which have long data record (> 50 years)
+  filter(Max == 2018) #filter crops which currently have data
+
+
+#create index for canadian data
+CanadaPRICE_index <- marketprice_All %>%
+  filter((Dol2018perMetricTonne > 0), Year >= 1926) %>% # 
+	group_by(Crop) %>% 
+  summarize(Year = min(Year)) %>% 
+	left_join(marketprice_All) %>% 
+  rename(IndexPrice_2018dol.ton = Dol2018perMetricTonne, 
+         IndexYield_MetricTonneperHA = MetricTonneperHA) %>% 
+	select(Crop, IndexPrice_2018dol.ton, IndexYield_MetricTonneperHA) %>% 
+	full_join(marketprice_All) %>% 
+  mutate(Price_index = Dol2018perMetricTonne/IndexPrice_2018dol.ton,
+         Yield_index = MetricTonneperHA / IndexYield_MetricTonneperHA) %>% 
+	filter(Crop %in% canpricefilter$Crop)  %>%
+  group_by(Year) %>%
+  summarise(AvPrice_index = mean(Price_index),
+            AvYield_index = mean(Yield_index),
+            AvPricepermetrictonne_2018USD = mean(Dol2018perMetricTonne)/CADUSD)
+
+CanadaAll_index <- gap2 %>% 
+		filter(Geography == 'Canada') %>% 
+		  select(Year, InputCost.CAD2018, `Seeded area`, Geography, Production) %>% 
+		  mutate(TOTALinputIndex = InputCost.CAD2018/gap2$InputCost.CAD2018[gap2$Year == 1926],
+		         TOTALprodIndex =Production/gap2$Production[gap2$Year==1926],
+		         SeededAreaTotalCropIndex =`Seeded area`/gap2$`Seeded area`[gap2$Year==1926])  %>%
+  ungroup() %>%
+  select(Year, TOTALinputIndex, TOTALprodIndex, SeededAreaTotalCropIndex) %>%
+  full_join(CanadaPRICE_index) %>%
+  full_join(Population %>% select(Year, CanPopIndex)) %>%
+  gather(METRIC,VALUE,-Year) 
+
+# PRICE THINGS OUTPUT VALUE
+VALUE <- CAN_prod %>%
+  filter(Harvest.disposition == "Total farm value (dollars)") %>%
+  group_by(Year, Geography, Harvest.disposition) %>%
+  summarise(Value = sum(VALUE, na.rm = T)) %>%
+  rename(Metric = Harvest.disposition) %>%
+  mutate(Metric = 'FarmValue_nominaldollars')
+VALUE2 <- CAN_prod %>%
+  filter(Harvest.disposition == "Average farm price (dollars per tonne)"|
+           Harvest.disposition == "Production (metric tonnes)") %>%
+  group_by(Year, Crop, Geography, Harvest.disposition) %>%
+  summarise(Value = sum(VALUE, na.rm = T)) %>%
+  pivot_wider(names_from = Harvest.disposition, values_from = Value) %>%
+  mutate(Value = `Average farm price (dollars per tonne)` * `Production (metric tonnes)`) #%>%
+  group_by(Year)
+  rename(Metric = Harvest.disposition) %>%
+  mutate(Metric = 'FarmValue_nominaldollars')
+  
+#output value
+OUTVALUE <- CAN_prod %>%
+  select(Year, Harvest.disposition, Crop, VALUE) %>%
+  pivot_wider(names_from = Harvest.disposition, values_from = VALUE) %>%
+  mutate(OutputValueCalc = `Production (metric tonnes)` * `Average farm price (dollars per tonne)`) %>%
+  	filter(Crop %in% canpricefilter$Crop)  %>%
+  left_join(marketprice_All) %>%
+  mutate(OutputValueCalcPrices = `Production (metric tonnes)` *`AnnualDolPerMetricTonne`) %>%
+  mutate(OutputValue1 = ifelse(is.na(`Total farm value (dollars)`), OutputValueCalc, `Total farm value (dollars)`)) %>%
+  mutate(OutputValue = ifelse(is.na(OutputValue1), OutputValueCalcPrices, OutputValue1)) %>%
+  filter(OutputValue>0) %>%
+  mutate(OutputValue = ifelse(OutputValue ==0, NA, OutputValue)) %>%
+  left_join(CAN_cpi) %>%
+  mutate(OutputValue.USD2018 = (CAD2018/value)*OutputValue/CADUSD) %>%
+  filter(Year >= 1926, !is.na(OutputValue.USD2018))
+
+CanadaOUTValue_index_crop <- OUTVALUE %>%
+  select(Year, Crop, OutputValue.USD2018) %>%
+    	filter(Crop %in% canpricefilter$Crop)  %>%
+  group_by(Crop) %>%
+  summarise(Year = min(Year)) %>%
+  left_join(select(OUTVALUE, Year, Crop, OutputValue.USD2018)) %>%
+  rename(IndexOutputValue.USD2018 = OutputValue.USD2018) %>%
+  select(-Year) %>%
+  full_join(select(OUTVALUE,Year, Crop, OutputValue.USD2018)) %>%
+  mutate(OutputValueIndex = OutputValue.USD2018 / IndexOutputValue.USD2018) %>%
+  # select(-IndexOutputValue.USD2018) %>%
+  filter(!is.na(OutputValueIndex)) 
+
+CanadaOUTValue_index_crop %>%
+  filter(Crop == "Canola") %>%
+  mutate(OutputValueIndex = format(OutputValueIndex, scientific = F),
+         OutputValue.USD2018 = format(OutputValue.USD2018, scientific = F)) %>% view()
+
+CanadaOUTValue_index <- CanadaOUTValue_index_crop %>%
+  group_by(Year) %>%
+  summarise(AvOutputValue_index = mean(OutputValueIndex),
+            TotalOutputValue_2018USD = sum(OutputValue.USD2018))
+
+CanadaOUTValue_index %>% ggplot(aes(x = Year, y = AvOutputValue_index)) + geom_line(col = "black") +
+  geom_line(aes(x = Year, y = VALUE), col = "green4", data = (CanadaAll_index %>% filter(METRIC == "TOTALinputIndex"))) +
+  theme_cowplot() +
+  labs(y = "Index value") +
+  ggtitle('Black = "Output Value" (value: yield * market price)\nGreen = "Input Value" (cost: fertilizers, seed, pesticides)')
+
+
+#####
+
+#Plotting Final Canadian Data (all info)
+Fig1A<-ggdraw(ggplot(filter(CanadaAll_index,
+                            Year >= 1926,
+                            METRIC == 'AvPrice_index' |
+                            METRIC == 'SeededAreaTotalCropIndex' |
+                            METRIC == 'TOTALinputIndex' |
+                            METRIC == 'CanPopIndex' |
+                            METRIC == 'TOTALprodIndex',
+                            Year != 2018), 
+                     aes(x = as.numeric(Year),
+                         y = (VALUE),
+                         shape = METRIC,
+                         fill = METRIC,
+                         col = METRIC)) + 
+                geom_hline(yintercept = (1), lty = 2, lwd = .3) +
+                theme_cowplot() +
+                scale_y_continuous(trans = log_trans(),
+                                   breaks = base_breaks() ,
+                                   labels = prettyNum) +
+                geom_smooth(fill = NA, method = 'gam', formula = y ~ s(x), alpha = .2, lwd = .5) + 
+  labs(x = 'Year', 
+       y = expression(Index ~ "(" * Year[n] ~ "= " ~ 1 * ")")) +
+    geom_point(size = .2) +
+    scale_shape_manual(values = c('TOTALinputIndex'=21,
+                                  'CanPopIndex'=22,
+                                  'TOTALprodIndex'=23,
+                                  'SeededAreaTotalCropIndex'=25,
+                                  'AvPrice_index'=21),
+                     breaks = c('TOTALinputIndex',
+                                'CanPopIndex',
+                                'TOTALprodIndex',
+                                'SeededAreaTotalCropIndex',
+                                'AvPrice_index'),
+                     labels = c("Input Cost, total ($)",
+                                'Canadian population (#)',
+                                'Production output, total (MT)',
+                                'Crop Area, total (ha)',
+                                'Market Price, 9 crops ($/t)'), 
+                     name = 'Metric') +
+  scale_fill_manual(values = c('TOTALinputIndex'= 'darkgreen',
+                               'CanPopIndex'= "#d95f02",
+                               'TOTALprodIndex'= 'orange2',
+                               'SeededAreaTotalCropIndex'= "#e7298a",
+                               'AvPrice_index'= "#666666"),
+                    breaks = c('TOTALinputIndex',
+                               'CanPopIndex',
+                               'TOTALprodIndex',
+                               'SeededAreaTotalCropIndex',
+                               'AvPrice_index'),
+                    labels = c("Input Cost, total ($)",
+                               'Canadian population (#)',
+                               'Production output, total (MT)',
+                               'Crop Area, total (ha)',
+                               'Market Price, 9 crops ($/t)'), 
+                    name = 'Metric') + 
+  scale_color_manual(values = c('TOTALinputIndex'= 'darkgreen',
+                                'CanPopIndex'= "#d95f02",
+                                'TOTALprodIndex'= 'orange2',
+                                'SeededAreaTotalCropIndex'= "#e7298a",
+                                'AvPrice_index'= "#666666"),
+                     breaks = c('TOTALinputIndex',
+                                'CanPopIndex',
+                                'TOTALprodIndex',
+                                'SeededAreaTotalCropIndex',
+                                'AvPrice_index'),
+                     labels = c("Input Cost, total ($)",
+                                'Canadian population (#)',
+                                'Production output, total (MT)',
+                                'Crop Area, total (ha)',
+                                'Market Price, 9 crops ($/t)'), 
+                     name = 'Metric') +
+	  theme(legend.position = c(.01, .83),
+	        legend.box.background = element_rect(),
+	        legend.spacing = unit(.8, 'cm'),
+	        text = element_text(size = 7),
+	        axis.text = element_text(size = 7),
+	        legend.key.size = unit(.1, 'cm'),
+	        legend.margin = margin(c(1, 1, 1, 2))) +
+	        guides(color = guide_legend(override.aes = list(size = .8)),
+	               fill = guide_legend(override.aes = list(size = .8)),
+	               shape = guide_legend(override.aes = list(size = .8)) )) +
+	        draw_label('a', .04, .925, fontface = 'bold',size =9)
+
+Fig1A_new<-ggdraw(ggplot(filter(CanadaAll_index, 
+                                Year>=1926, 
+                                METRIC== 'AvPrice_index'|
+                                  METRIC== 'SeededAreaTotalCropIndex'|
+                                  METRIC== 'TOTALinputIndex'|
+                                  METRIC== 'CanPopIndex'|
+                                  METRIC== 'TOTALprodIndex',
+                                Year!=2018), 
+                         aes(x =as.numeric(Year), 
+                             y =(VALUE),
+                             shape =METRIC, 
+                             fill =METRIC,
+                             col =METRIC)) + 
+	geom_hline(yintercept =(1),lty =2,lwd=.3) +
+	  theme_cowplot() +
+	scale_y_continuous(trans =log_trans(), breaks =base_breaks() ,labels =prettyNum) +
+  geom_smooth(fill =NA,method= 'gam', formula=y~s(x), alpha=.2,lwd=.5) + 
+  labs(x = 'Year', y =expression(Index~"("*Year[n]~"= "~1*")")) +
+  geom_point(size =.2) +
+	  scale_shape_manual(values = c(
+	    'TOTALinputIndex' = 21,
+	    'CanPopIndex' = 22,
+	    'TOTALprodIndex' = 23,
+	    'SeededAreaTotalCropIndex' = 25,
+	    'AvPrice_index' = 21
+	    ),
+	    breaks = c(
+	    'TOTALinputIndex',
+	    'CanPopIndex',
+	    'TOTALprodIndex',
+	    'SeededAreaTotalCropIndex',
+	    'AvPrice_index'
+	    ),
+	    labels = c(
+	      "Input Cost, total ($)",
+	      'Canadian population (#)',
+	      'Production output, total (MT)',
+	      'Crop Area, total (ha)',
+	      'Market Price, 9 crops ($/t)'
+	      ),
+	      name = 'Metric') +
+	    scale_fill_manual(
+	    values = c(
+	    'TOTALinputIndex' = 'darkgreen',
+	    'CanPopIndex' = "#d95f02",
+	    'TOTALprodIndex' = 'orange2',
+	    'SeededAreaTotalCropIndex' = "#e7298a",
+	    'AvPrice_index' = "#666666"
+	    ),
+	    breaks = c(
+	    'TOTALinputIndex',
+	    'CanPopIndex',
+	    'TOTALprodIndex',
+	    'SeededAreaTotalCropIndex',
+	    'AvPrice_index'
+	    ),
+	    labels = c(
+	    "Input Cost, total ($)",
+	    'Canadian population (#)',
+	    'Production output, total (MT)',
+	    'Crop Area, total (ha)',
+	    'Market Price, 9 crops ($/t)'
+	    ),
+	    name = 'Metric') +
+	    scale_color_manual(
+	    values = c(
+	    'TOTALinputIndex' = 'darkgreen',
+	    'CanPopIndex' = "#d95f02",
+	    'TOTALprodIndex' = 'orange2',
+	    'SeededAreaTotalCropIndex' = "#e7298a",
+	    'AvPrice_index' = "#666666"
+	    ),
+	    breaks = c(
+	    'TOTALinputIndex',
+	    'CanPopIndex',
+	    'TOTALprodIndex',
+	    'SeededAreaTotalCropIndex',
+	    'AvPrice_index'
+	    ),
+	    labels = c(
+	    "Input Cost, total ($)",
+	    'Canadian population (#)',
+	    'Production output, total (MT)',
+	    'Crop Area, total (ha)',
+	    'Market Price, 9 crops ($/t)'
+	    ),
+	    name = 'Metric'
+	    ) +
+	  theme(legend.position = c(.01, .83),
+	        legend.box.background = element_rect(),
+	        legend.spacing = unit(.8, 'cm'),
+	        text = element_text(size = 7),
+	        axis.text = element_text(size = 7),
+	        legend.key.size = unit(.1, 'cm'),
+	        legend.margin = margin(c(1, 1, 1, 2))) +
+	        guides(color = guide_legend(override.aes = list(size = .8)),
+	               fill = guide_legend(override.aes = list(size = .8)),
+	               shape = guide_legend(override.aes = list(size = .8)) )) +
+	        draw_label('a', .04, .925, fontface = 'bold',size =9)
+
+# Output value ($)” line, which is the product of annual yield (t/ha), market price ($/t), and planted area (ha) for 9 crops (for which market price information exists)
+  
+#Summary Statistics
+CanadaAll_index %>% filter(Year == 2018)
+```
+## Canadian Data
+
+#### Canadian Production (Outputs)
+- Production data goes back to 1908, however input data begins in 1926, henceforth data are presented since 1926
+- We look at production of 28 major field crops which include:
+
+```{r echo=F}
+levels(as.factor(CAN_prod$Crop))
+```
+
+#### Canadian Farm Expenses (Inputs)
+- Data are uploaded and cleaned (when neccessary), adjusted for inflation, and ultimately converted to 2018 USD
+- We look at the following expenses: Fertilizer and lime, Pesticides, Commercial seed
+- We consider cost data BEFORE rebates. Hence this is the "true cost" of the inputs, before government subsidies (or other) are applied to these 4 categories of expenses.
+
+### Market Prices
+- Represent the average annnual selling price. Note that annual average was preffered given that historical data only includes annual information, despite more contemporary data reporting quarterly. 
+- Importantly, we note that "profit estimate" is calculated according the the following: ((yield * price)/area seeded ) for each individual crop less the average input cost for all cropland (Canadian total input cost/Canadian total area seeded). We recognize that the harvested yield might not have been sold in the same calendar year, that market prices fluctuate within a year, and that certain crops require more costly inputs. However, the approximation of profit is useful for determining the value ecosystem services would need to make up.
+- Market prices are only given for 9 focal crops, which have market prices reported but for a long period of time (>=50 years) and have current data (reported thru 2018). Crops include:
+
+```{r echo=F}
+canpricefilter$Crop
+```
+- since 
+
+### Summary Statistics
+- The cropland area seeded increased by ```r seedindex``` times within Canada between the years 1926 and 2017
+- Production output increased by ```r prodindex``` times within Canada between the years 1926 and 2017
+- Input costs increased by ```r inputindex``` times within Canada between the years 1926 and 2017
+- Canadian Population has grown ```r canpopgrowth``` times between 1926 and 2016. 
+- Yields for the 9 focal crops increased by ```r yieldindex``` between 1926 and 2017. 
+- Market prices for the 9 focal crops increased by ```r marketindex``` between 1926 and 2017.
+
+```{r Figure1, eval = T, echo=F, fig.width=10, fig.height =7}
+Figure1<-grid.arrange(Fig1A,Fig1B, Fig1C, ncol =1, nrow=3,layout_matrix =rbind(c(1),c(2),c(3)),widths = c(1),heights = c(1,1,1))#Figure 1
+ggsave("/Users/ellen/Dropbox/Marginal lands synthesis/figures/Figure1.png",Figure1,dpi=600,width=12,height =17,units = 'cm')
+
+
+Figure1_new<-grid.arrange(Fig1A, Fig1C, ncol=1, nrow=2,layout_matrix =rbind(c(1),c(2)),widths = c(1),heights = c(1,1))#
+ggsave("/Users/ellen/Dropbox/Marginal lands synthesis/figures/Figure1_new.png",Figure1_new,dpi=600,width=12,height =10,units = 'cm')
+
+Fig1_newsupplement<- ggsave("/Users/ellen/Dropbox/Marginal lands synthesis/figures/Figure1_newsupplement.png",Fig1B, dpi=600,width=12,height =7,units = 'cm')
+```
+
+
+```{r lucsetup, include =F}
+luc1<-read_xlsx('./landuse_change.tif.vat.xlsx') %>% 
+	rename(LANDUSE_CH=Value) %>% 
+	select(-LU2010_FR,-ROTATN_FR, -LU1990_FR, -LU2000_FR)
+
+luc2<-read_xls('./finalllly.xls') %>% 
+	select(COUNT, CLIRASTER,LANDUSE_CH) 
+
+#Need to fix wonky ArcGIS export thing	
+LUC<-full_join(luc1,luc2) %>% filter(HasCropland==1,!is.na(COUNT)) 
+	LUC $CLIreal[LUC $CLIRASTER== "9"] <- "I"#1
+	LUC $CLIreal[LUC $CLIRASTER == "6"] <- "II"#2
+	LUC $CLIreal[LUC $CLIRASTER == "3"] <- "III"#3
+	LUC $CLIreal[LUC $CLIRASTER == "5"] <- "IV"#4
+	LUC $CLIreal[LUC $CLIRASTER == "1"] <- "V"#5
+	LUC $CLIreal[LUC $CLIRASTER == "8"] <- "VI"#6
+	LUC $CLIreal[LUC $CLIRASTER == "2"] <- "VII"#7
+	LUC $CLIreal[LUC $CLIRASTER == "4"| LUC $CLIRASTER == "7"| LUC $CLIRASTER == "10"] <- "0"
+
+LUC2 <- LUC %>% 
+	group_by(direction,CLIreal) %>% 
+	summarise(countpixel =sum(COUNT)) %>% 
+	spread(direction,countpixel) %>% 
+	mutate(NET=(gain-lost+eek-eek))
+	
+LUC3<- LUC %>% 
+	filter(CODE2010==51,CLIreal!= '0') %>% 
+	group_by(LU2010_EN,CLIreal) %>% 
+	summarise(countpixel =sum(COUNT)) %>% 
+	mutate(HAarea=(countpixel*30*30*.0001))
+	
+seedcli<-CAN_prod %>% 
+	filter(Harvest.disposition== 'Seeded area (hectares)',Crop!= 'Summerfallow',Geography == 'Canada') %>% 
+	group_by(Harvest.disposition,Year) %>% 
+	summarise(Crop=sum(VALUE, na.rm = T)) 
+
+	8812582.2/120731077 #I
+	36682206.5/120731077 #II
+	40506844.1/120731077 #III
+		(8812582.2+ 36682206.5+ 40506844.1)/120731077#total good land
+	20958010.7/120731077 #IV
+	9785048.1/120731077 #V
+	3087477.9/120731077 #VI
+	898907.4/120731077 #VII
+		(20958010.7 + 9785048.1 + 3087477.9 + 898907.4)/120731077#total crappy land
+	2062009.9/122793087 #no cli ->excluded from analysis and % covers
+
+	Fig2A <- ggdraw(
+	  ggplot((LUC2 %>%
+	  filter(CLIreal != 'NA', CLIreal != '0')),
+	  aes(x = CLIreal,
+	      y = (NET * 900 * .0001 / 1000000),
+	      fill = CLIreal,
+	      col = CLIreal)) +
+	    geom_bar(position = 'dodge', stat = 'identity') +
+	    labs(y = 'Cropland change 1990-2010\n(hectares, millions)', x = 'Land Class') +
+	    geom_hline(yintercept = 0) + 
+	    guides(fill =F,col =F) +
+	    scale_fill_manual(values = c('#006d2c','#238b45','#41ab5d','#dfc27d','#bf812d','#8c510a','#543605')) +
+	    scale_color_manual(values = c('black','black','black','black','black','black','black')) +
+	    xlab(expression("Land class (more fertile" %<->% "less fertile)")) +
+	    theme(text = element_text(size = 6),
+	          axis.text = element_text(size = 6)))
+
+Fig2C<-ggdraw(ggplot((LUC3 %>% 
+		filter(CLIreal!=0)),
+	aes(x = "", y =HAarea, fill =CLIreal)) +
+	geom_bar(width=1,stat = 'identity') +
+	coord_polar('y',start =45,direction=-1) +
+	theme_minimal() +
+theme(legend.position= 'none',panel.border=element_blank(),panel.grid=element_blank(), axis.title =element_blank(), axis.text =element_blank()) +
+	scale_fill_manual(values = c('#006d2c','#238b45','#41ab5d','#dfc27d','#bf812d','#8c510a','#543605'))) +
+	draw_label('C',.12,.97, fontface = 'bold',size =9)
+
+```
+
+# Land Use Change
+- Land classes range from I-->VII and correspond to high fertility (I, II, III) --> marginal quality for agriculture (IV, V, VI, VII). More information on land class designation can be found at http://sis.agr.gc.ca/cansis/nsdb/cli/classdesc.html
+- Land use across Canada was classified in 1990, 2000, and 2010, and we were interested only in the "Cropland" land cover; raw data can be found here https://open.canada.ca/data/en/dataset/18e3ef1a-497c-40c6-8326-aac1a34a0dec and an interactive map can be accessed at http://www.agr.gc.ca/atlas/landu
+- Land quality and land use data sets were paired, and land use change within each land quality classification was obtained using ArcMAP (ESRI).
+
+```{r echo=F, fig.width=10, fig.height =7}
+Fig2<-(grid.arrange(Fig2A,ggplot(),Fig2C, ncol =2, nrow=2,layout_matrix =rbind(c(1,1),c(2,3)),widths = c(.3,1),heights = c(.5,1)))
+#ggsave("/Users/ellen/Dropbox/Marginal lands synthesis/figures/Figure2_feb19.pdf",Fig2,dpi=600,width=5.5,height =12,units = 'cm')
+```
+
+# Market prices and profits
+
+```{r Profit, include = F}
+finbin_path <- "./FINBIN/TEST"   # path to the data
+finbin_files <- dir(finbin_path, pattern = "*.CSV") # get file names
+finbin_data_all <- data_frame(filename = finbin_files) %>% 
+  mutate(file_contents = map(filename, ~ read_csv(file.path(finbin_path,.),
+                                                  skip=7,na=c("-",""), col_types = cols() ))) %>%
+  unnest() %>%
+  filter(!is.na(X1)) 
+
+finbin_cropID <- finbin_data_all %>%
+  filter(str_detect(X1, 'Nm Ir DC')) %>%
+  select(X1, filename) %>%
+  separate(X1, into =c("junk", "Crop"), sep = "Nm Ir DC Est ") %>%
+  select(Crop, filename)
+
+levels(as.factor(finbin_cropID$Crop))
+
+finbin_filter <- tibble(X1 = c("Acres", "Number of farms",
+                               "Yield per acre (bu.)", 
+                               "Yield per acre (cwt.)",
+                               "Value per bu.", 
+                               "Value per cwt.",
+                               "Crop insurance per acre",
+                               "Gross return per acre",
+                               "Government payments",
+                               "Seed", "Fertilizer", "Crop chemicals", 
+                               "Total direct expenses per acre",
+                               "Total overhead expenses per acre",
+                               "Net return per acre",
+                               "Net return with govt pmts",
+                               "Labor & management charge",
+                               "Net return over lbr & mgt")) #includes gvt payments
+
+finbinA <- finbin_data_all %>%
+  full_join(finbin_cropID) %>%
+  filter(X1 %in% finbin_filter$X1) %>%
+  rename(Measurement = X1) %>%
+  select(-`All Farms`, -X26, -X27, -X28, -X29, -X5, -X6) %>%
+ gather(Year, Value, -filename, -Measurement, -Crop) %>%
+  mutate(Year = as.numeric(Year),
+         Value = as.numeric(Value)) %>%
+  full_join(US_cpi) %>%
+  mutate(Value_2018USD=(USD2018/CPI)*Value) %>%
+  mutate(Value_2018USD = ifelse(Measurement=="Acres"|Measurement =="Number of farms"|
+                                  Measurement=="Yield per acre (bu.)"|Measurement=="Yield per acre (cwt.)", 
+                                NA, Value_2018USD)) %>%
+  filter(Crop!="Custom Work", #not really useful
+         Crop!="Hay", #so few, many types of hay
+        Crop!="Fallow", #not useful
+        Crop!="Corn Silage", #eh, going with grain corn instead here
+        Crop!="Hay Mixed Alfalfa/Grass",
+        Crop!="Hay Grass", #preferring just "Hay Mixed"
+        Crop!="Hay Alfalfa", Crop!="Hay Mixed", Crop!="CRP",#NOT CORE
+        Crop!="Peas Processing") %>% #going with field peas
+  mutate(Crop = recode(Crop, "Wheat Durum" = "Wheat, all",
+                       "Wheat Spring" = "Wheat, all",
+                       "Wheat Winter" = "Wheat, all",
+                       "Flax" = "Flaxseed",
+                       "Corn" = "Grain corn",
+                       "Peas Field" = "Peas, dry",
+                       "Rye" = "Rye, all")) %>%
+  select(Crop, Year, Measurement, Value_2018USD, Value) 
+
+finbinA %>% filter(Measurement == "Number of farms") %>%
+  ggplot(aes(x = Year, y = Value, col = Crop)) +
+  geom_point()+
+  theme_cowplot() +
+  	scale_color_brewer(palette = 'Paired') 
+
+finbin <-finbinA 
+  group_by(Crop, Year, Measurement) %>% #change to wheat, all
+  summarise(Value = sum(Value_2018USD, na.rm=T)) 
+
+finbinNetReturn <- finbin %>% 
+  filter(Measurement=='Net return over lbr & mgt') %>%
+  mutate(ValuePerHA = Value * 2.47105)
+
+Fig4A <- ggdraw(finbinNetReturn %>% 
+  ggplot(aes(x=Year, y= ValuePerHA))+
+   geom_hline(yintercept = c(0))+	
+  geom_ribbon(alpha = .5, inherit.aes = F, data = (finbinNetReturn %>% group_by(Year) %>% summarise(MEAN = mean(ValuePerHA), SD = sd(ValuePerHA))), aes(x=Year, ymin=MEAN-SD, ymax=MEAN+SD))+
+   geom_point(aes(col=Crop, shape= Crop, fill = Crop), size=.5)+
+  geom_line(aes(col=Crop, shape= Crop, fill = Crop),lwd=.2)+
+    labs(y = "American net profit\n (2018 USD/ha)")+
+  theme_cowplot()+
+    scale_fill_brewer(palette = 'Paired') +
+    scale_color_brewer(palette = 'Paired') +
+	scale_shape_manual(values = c(21, 22, 23, 24, 25, 21, 22, 23, 24, 25)) +
+    scale_x_continuous(breaks = c(1995, 2000, 2005, 2010, 2015))+
+	guides(color=guide_legend(override.aes =list(size =1))) +
+	theme(text =element_text(size =7), axis.text =element_text(size =7)) +
+	theme(legend.key.size = unit(.5,"line")) +
+	  theme(legend.position = c(0,.75),        
+	     legend.box.background=element_rect(),
+        legend.spacing=unit(.8,'cm'),
+        text =element_text(size =7),
+        axis.text =element_text(size =7),
+        legend.key.size =unit(.1,'cm'),
+        legend.margin=margin(c(1,1,1, 2))) +
+	theme(plot.margin = margin(0.3,.2,0,.3, "cm")) +
+  guides(color=guide_legend(override.aes =list(size =.8)), 
+         fill =guide_legend(override.aes =list(size =.8)),shape =guide_legend(override.aes =list(size =.8))))+
+        draw_label('a',.04,.925, fontface = 'bold',size =9)
+
+finbinNetReturn %>% filter(Crop == "Grain corn") %>% arrange(-ValuePerHA)
+finbinNetReturn %>% summary()
+finbinNetReturn %>% filter(Year>=2015) %>%summary()
+finbinNetReturn %>% filter(Year>=2000) %>%summary()
+
+ProductionCostPerCrop <- (finbin %>% 
+                            filter(Measurement=="Total overhead expenses per acre"|Measurement=="Total direct expenses per acre") %>%
+                            ggplot(aes(x=Year, y=Value))+
+   geom_point(aes(col=Crop, shape= Crop, fill = Crop), size=.5)+
+  geom_line(aes(col=Crop),lwd=.2)+
+  theme_cowplot() + 
+    	scale_shape_manual(values = c(21, 22, 23, 24, 25, 21, 22, 23, 24, 25)) +
+        scale_fill_brewer(palette = 'Paired') +
+    scale_color_brewer(palette = 'Paired') +
+    facet_wrap(~Measurement,nrow=3, scales = "free_y") )
+
+
+Fig4B <- ggdraw(marketprice_All %>%
+		filter(Crop %in% canpricefilter$Crop) %>%
+  mutate(Revenue2018USD = (Dol2018perMetricTonne * MetricTonneperHA)/CADUSD) %>% 
+    filter(!is.na(Revenue2018USD), Dol2018perMetricTonne>0, Year>=1926) %>%
+  ggplot(aes(x = Year, y = Revenue2018USD)) +
+	theme_cowplot() +
+	geom_point(size =.1, aes(shape =Crop, fill =Crop,color=Crop)) +  
+	scale_y_continuous(trans =log_trans(), breaks =base_breaks()) +
+	geom_smooth(method= 'gam', formula=y~s(x), alpha=.5,col = 'black',lwd=.5, fill =NA) +
+	labs(x = 'Year', y = 'Canadian gross revenue\n(2018 USD/ha)') +
+	scale_color_brewer(palette = 'Paired') +
+	scale_fill_brewer(palette = 'Paired') +
+	scale_shape_manual(values = c(21, 22, 23, 24, 25, 21, 22, 23, 24, 25)) +
+    guides(col = F, shape = F, fill = F)+
+    	scale_x_continuous(breaks = c(1926, 1950, 1975, 2000, 2018), limits = c(1926, 2018)) +  
+	theme(text =element_text(size =7), axis.text =element_text(size =7)) +
+	theme(plot.margin = margin(0.3,.2,0,.3, "cm"))) +
+        draw_label('b',.04,.925, fontface = 'bold',size =9)
+
+Fig4B_new <- ggdraw(marketprice_All %>%
+		filter(Crop %in% canpricefilter$Crop, Year>=1994, Year<=2018) %>%
+  mutate(Revenue2018USD = (Dol2018perMetricTonne * MetricTonneperHA)/CADUSD) %>% 
+    filter(!is.na(Revenue2018USD), Dol2018perMetricTonne>0, Year>=1926) %>%
+  ggplot(aes(x = Year, y = Revenue2018USD)) +
+	theme_cowplot() +
+	geom_point(size =.1, aes(shape =Crop, fill =Crop,color=Crop)) +  
+	# scale_y_continuous(trans =log_trans(), breaks =base_breaks()) +
+	geom_smooth(method= 'gam', formula=y~s(x), alpha=.5,col = 'black',lwd=.5, fill =NA) +
+	labs(x = 'Year', y = 'Canadian gross revenue\n(2018 USD/ha)') +
+	scale_color_brewer(palette = 'Paired') +
+	scale_fill_brewer(palette = 'Paired') +
+	scale_shape_manual(values = c(21, 22, 23, 24, 25, 21, 22, 23, 24, 25)) +
+    guides(col = F, shape = F, fill = F)+
+    	# scale_x_continuous(breaks = c(1926, 1950, 1975, 2000, 2018), limits = c(1926, 2018)) +      
+    scale_x_continuous(breaks = c(1995, 2000, 2005, 2010, 2015))+
+	theme(text =element_text(size =7), axis.text =element_text(size =7)) +
+	theme(plot.margin = margin(0.3,.2,0,.3, "cm"))) +
+        draw_label('b',.04,.925, fontface = 'bold',size =9)
+  
+```
+
+```{r Fig3, echo=F, , fig.width=10, fig.height =7}
+Fig4<-grid.arrange(Fig4A,Fig4B, ncol =1, nrow=2,layout_matrix =rbind(c(1),c(2)),widths = c(1),heights = c(1,1))#Figure 1
+ggsave("/Users/ellen/Dropbox/Marginal lands synthesis/figures/Fig4.png", Fig4,dpi=600,width=8,height =10,units = 'cm')
+
+Fig4_new<-grid.arrange(Fig4A,Fig4B_new, ncol =1, nrow=2,layout_matrix =rbind(c(1),c(2)),widths = c(1),heights = c(1,1))#Figure 1
+ggsave("/Users/ellen/Dropbox/Marginal lands synthesis/figures/Fig4_new.png", Fig4_new,dpi=600,width=8,height =10,units = 'cm')
+
+```
+
+
+## Supplemental Information
+
+### Correlating fertilizer dollars and fertilizer weight
+- Long term reporting is only given for dollars spent on fertilizers. For the subset of years which report both the cost spent on fertilizer and the weight of fertilizer purched, we ask if these two metrics correlate. If so, we can roughly assume that cost spent on fertilizers is a good proxy for amount (mass) of fertilizers actually used. 
+- We recognize that fertilizers may be used in a different year than which they were purchased
+
+```{r include = F}
+CAN_fertwt_current = read_csv('32100039.csv',col_types = cols()) %>%
+  filter(GEO== 'Canada', Period== 'July to June') %>%
+  mutate(ReportedValue =ifelse(SCALAR_ID==0,VALUE,(ifelse(SCALAR_ID==3,(VALUE*1000),NA)))) %>%
+  separate(col =REF_DATE,sep= '/',into= c('Year','x')) %>%
+	rename(Geography =GEO) %>%
+	select(Geography,Year,`Fertilizer nutrient content`,ReportedValue)
+
+CAN_fertwt_historic = read_csv('3210027401_databaseLoadingData.csv',col_types = cols()) %>%
+  mutate(ReportedValue =ifelse(SCALAR_ID==0,VALUE,(ifelse(SCALAR_ID==3,(VALUE*1000),NA)))) %>%
+  separate(col =REF_DATE,sep= '/',into= c('Year','x')) %>%
+	rename(Geography =GEO) %>%
+	select(Geography,Year,`Fertilizer nutrient content`,ReportedValue)
+
+CAN_fertwt<-bind_rows(CAN_fertwt_current,CAN_fertwt_historic) %>% 
+  group_by(Year,Geography) %>%
+  summarise(FertWT=sum(ReportedValue, na.rm = T)) %>%
+  ungroup() %>%
+  mutate(Year=as.numeric(Year)) %>%
+  full_join(CAN_expenses %>% filter(Geography == 'Canada',ExpenseType == 'Fertilizer and lime'))
+
+cor.test(CAN_fertwt$truedol, CAN_fertwt$FertWT,method = "pearson")
+
+FigS1<-ggplot(filter(CAN_fertwt), aes(x =(truedol/1000000/CADUSD ), y =(FertWT/1000000))) +
+  geom_point(size =2, aes(col = Year)) +
+  geom_smooth(method= 'lm', fill =NA,col = 'black') +
+  theme(text =element_text(size =7), axis.text =element_text(size =7)) +
+  labs(y = "Fertilizer amount\n(metric tonnes, millions)",x = 'Dollars spent on fertilizer\n(2018 USD, millions)',col = 'Year')
+
+```
+
+```{r  echo=F, fig.width=4, fig.height =4, warning=F}
+FigS1
+ggsave("/Users/ellen/Dropbox/Marginal lands synthesis/figures/FigureS1.pdf",FigS1,dpi=600,width=10,height =8,units = 'cm')
+```
+
+
+### Identity of Canadian inputs and ouputs
+- Breakdown of monetary amount spent on intensification inputs (A) and production outputs (B) between 1926-2016 in Canada. 
+- Input types in (a) include commercial seed (teal circles), fertilizer and lime (orange squares), pesticides (purple diamonds). Crop types in (B) include cereal crops (orange), forages (purple), oilseeds (green), other (blue), and pulses (red). 
+
+```{r eval = T, echo=F}
+CropType<-tibble(Crop= c('Barley','Corn for grain','Canary seed','Mixed grains','Oats','Rye, all','Triticale','Wheat, all','Beans, all dry','Chick peas','Lentils','Peas, dry','Fababeans','Soybeans','Canola','Flaxseed','Mustard seed','Sunflower seed','Safflower','Corn, fodder','Tame hay','Summerfallow'),CropType = c('Cereal','Cereal','Cereal','Cereal','Cereal','Cereal','Cereal','Cereal','Pulses','Pulses','Pulses','Pulses','Pulses','Oilseeds','Oilseeds','Oilseeds','Oilseeds','Oilseeds','Oilseeds','Fodder','Fodder','Summerfallow'))
+
+```
+- Crops are grouped accordingly:
+```{r eval = T, echo=F}
+data.frame(CropType)
+```
+
+```{r eval = T, warning=F,echo=F}
+FigS2A<-ggdraw(ggplot((CAN_expenses %>% 
+			filter(Geography == 'Canada') %>% 
+			group_by(Year, ExpenseType) %>% 
+			summarise(INCOST=sum(truedol, na.rm = T)) %>% 
+			mutate(TYPE=ifelse(ExpenseType == 'Fertilizer and lime','z',ifelse(ExpenseType == 'Pesticides','y',ifelse(ExpenseType == 'Commercial seed','x','w'))))  ),
+	aes(x =as.numeric(Year), y =(INCOST/1000000), fill =(TYPE))) +
+  theme_cowplot()	+
+	geom_col(position=position_stack(reverse =F),width=1) +
+	labs(col = 'Input Type',shape = 'Input Type', fill = 'Input Type', y = 'Amount spent \n(2016 CAD, millions)',x = 'Year') +
+	theme(legend.position= c(.05,.8),legend.key.size =unit(.3,'cm')) +
+	scale_fill_brewer(palette = 'Set1', breaks = c('z','y','x'),labels = c('Fertilizer and lime','Pesticides','Commercial seed')) +
+	theme(text =element_text(size =7), axis.text =element_text(size =7))  ) +
+	draw_label('A',.1,.95, fontface = 'bold',size =9)
+FigS2B <-ggdraw(ggplot((CAN_prod %>% 
+			full_join(CropType) %>% 
+			filter(Geography == 'Canada',Harvest.disposition== 'Production (metric tonnes)') %>% 
+			group_by(Year,CropType) %>% 
+			summarise(OUTprod=sum(as.numeric(VALUE), na.rm = T))),
+	aes(x =as.numeric(Year), y =(OUTprod/1000000), fill =forcats::fct_rev(CropType))) +
+	geom_col(position=position_stack(reverse =F),width=1) +
+	  theme_cowplot() +
+	labs(y = 'Production \n(metric tonnes, millions)',x = 'Year', fill = 'Crop Type') +
+	xlim(c(1926, 2016)) +
+	theme(legend.position= c(.05,.8),legend.key.size =unit(.3,'cm')) +
+	scale_fill_brewer(palette = 'Set1') +
+	theme(text =element_text(size =7), axis.text =element_text(size =7))  ) +
+	draw_label('B',.2,.95, fontface = 'bold',size =9)
+
+FigS2<-grid.arrange(FigS2A, FigS2B, ncol =2, nrow=1,layout_matrix =rbind(c(1, 2)),widths = c(2, 2),heights = c(2))
+#ggsave("/Users/ellen/Dropbox/Marginal lands synthesis/FigureS2.pdf",FigS2,dpi=600,width=12,height =6,units = 'cm')
+```
+
+
+### Where gains and losses of cropland come from
+- As it relates to landcover change. 
+
+```{r eval = T, echo=F}
+before.lu<-LUC %>% mutate(Gain=ifelse( (CODE1990 !=51 &( CODE2000==51|CODE2010==51)),'gain',"")) %>%group_by(Gain,LU1990_EN,LU2000_EN,LU2010_EN) %>% summarise(HA=sum(COUNT)*30*30*.0001)  %>%filter(Gain== 'gain') %>% mutate(Prev= "")
+	before.lu $Prev[before.lu$LU1990_EN== "Unclassified"|before.lu$LU1990_EN== "Other land"] <- "Other"
+	before.lu$Prev[before.lu$LU1990_EN== "Forest"|before.lu$LU1990_EN== "Forest Wetland"] <- "Forest"
+	before.lu$Prev[before.lu$LU1990_EN== "Trees"|before.lu$LU1990_EN== "Treed Wetland"] <- "Trees"
+	before.lu$Prev[before.lu$LU1990_EN== "Grassland Managed"| before.lu$LU1990_EN== "Grassland Unmanaged"] <- "Grassland"
+	before.lu$Prev[before.lu$LU1990_EN== "Wetland"| before.lu$LU1990_EN== "Wetland Shrub"| before.lu$LU1990_EN== "Wetland Herb"] <- "Wetland"
+	before.lu$Prev[before.lu$LU1990_EN== "Settlement"] <- "Settlement"
+	before.lu$Prev[before.lu$LU1990_EN== "Roads"] <- "Roads"
+BEFORE<-before.lu %>% group_by(Prev) %>% summarise(area.ha=sum(HA)) %>% mutate(Direction= 'gain') %>% rename(From =Prev)
+after.lu<-LUC %>% mutate(Lost =ifelse( ((CODE1990==51|CODE2000==51)&CODE2010!=51),'lost',"")) %>%group_by(Lost,LU1990_EN,LU2000_EN,LU2010_EN) %>% summarise(HA=sum(COUNT)*30*30*.0001)  %>%filter(Lost == 'lost') %>% mutate(After= "")
+	after.lu $After[after.lu$LU2010_EN== "Unclassified"|after.lu$LU2010_EN== "Other land"] <- "Other"
+	after.lu$After[after.lu$LU2010_EN== "Forest"|after.lu$LU2010_EN== "Forest Wetland"] <- "Forest"
+	after.lu$After[after.lu$LU2010_EN== "Trees"|after.lu$LU2010_EN== "Treed Wetland"] <- "Trees"
+	after.lu$After[after.lu$LU2010_EN== "Grassland Managed"| after.lu$LU2010_EN== "Grassland Unmanaged"] <- "Grassland"
+	after.lu$After[after.lu$LU2010_EN== "Wetland"| after.lu$LU2010_EN== "Wetland Shrub"| after.lu$LU2010_EN== "Wetland Herb"] <- "Wetland"
+	after.lu$After[after.lu$LU2010_EN== "Settlement"] <- "Settlement"
+	after.lu$After[after.lu$LU2010_EN== "Roads"] <- "Roads"
+AFTER<-after.lu %>% group_by(After) %>% summarise(area.ha=sum(HA)) %>% mutate(Direction= 'lose') %>% rename(From = After)
+
+before.after<-bind_rows(BEFORE,AFTER)
+```
+
+```{r eval = T,echo=F}
+FigureS3<-ggdraw(ggplot(before.after, aes(x =Direction, y =(area.ha/1000000), fill =From)) +
+	geom_bar(position= 'stack',stat = 'identity',color= 'black') +
+	scale_fill_brewer(palette = 'Set1') +labs(y = 'Land area\n(hectares, millions)',x = 'Direction of change', fill = 'Land\nCover') +
+	scale_x_discrete(labels = c('New cropland,\nprevious cover','Lost cropland,\ncurrent cover')) +
+	theme(text =element_text(size =7), axis.text =element_text(size =7)) +
+	theme(legend.key.size = unit(.5,"line")))
+```
+```{r eval = T, echo=F, fig.width=4, fig.height =4}
+FigureS3
+ggsave("/Users/ellen/Dropbox/Marginal lands synthesis/figures/FigureS3.pdf",FigureS3,dpi=600,width=9,height =6,units = 'cm')
+```
+
+
+### Percent Operating Expenses on Grain and Oilseed Farms
+- For a subset of years more detailed input expenses by type of farm was given. This is an important designation, for instance, as labor costs are likely higher on animal farms while fertilizer costs are lower. 
+```{r include =F}
+GO<- read_csv('./3210007801_databaseLoadingData.csv', col_types = cols()) %>%   
+  mutate(ReportedValue =ifelse(SCALAR_ID==0,VALUE,(ifelse(SCALAR_ID==3,(VALUE*1000),NA)))) %>%
+	rename(Geography =GEO, RevenueExpenses =`Revenues and expenses`, Year=REF_DATE)
+
+GOPercent <- GO %>% 
+	filter(RevenueExpenses == 'Total operating expenses') %>%
+	rename(TotalOperatingExpense =ReportedValue) %>%
+	select(Year,TotalOperatingExpense,`Farm type`) %>%
+	full_join(GO) %>%
+	mutate(PercentExpense = ReportedValue/TotalOperatingExpense) %>%
+	filter(!is.na(ReportedValue)) %>% as_tibble()
+	GOPercent$RevenueExpenses[GOPercent$RevenueExpenses == 'Salaries, including Canada Pension Plan, Quebec Pension Plan and Employment Insurance'] <- 'Salaries'
+	GOPercent$RevenueExpenses[GOPercent$RevenueExpenses == 'Total operating expenses'] <- 'Operating'
+	GOPercent$RevenueExpenses[GOPercent$RevenueExpenses == 'Total crop expenses'] <- 'Crop'
+	GOPercent$RevenueExpenses[GOPercent$RevenueExpenses == 'Total general expenses'] <- 'General'
+	GOPercent$RevenueExpenses[GOPercent$RevenueExpenses == 'Total livestock expenses'] <- 'Livestock'
+	GOPercent$RevenueExpenses[GOPercent$RevenueExpenses == 'Total machinery expenses'] <- 'Machinery'
+	GOPercent$RevenueExpenses[GOPercent$RevenueExpenses == 'Custom work and machine rental expenses'] <- 'Custom work & machine rental'
+	GOPercent$RevenueExpenses[GOPercent$RevenueExpenses == 'Net interest expenses'] <- 'Net interest'
+	GOPercent$RevenueExpenses[GOPercent$RevenueExpenses == 'Building and fence repairs'] <- 'Building & fence repairs'
+	GOPercent$RevenueExpenses[GOPercent$RevenueExpenses == 'Marketing expenses'] <- 'Marketing'
+	GOPercent$RevenueExpenses[GOPercent$RevenueExpenses == 'Miscellaneous expenses'] <- 'Miscellaneous'
+	GOPercent$RevenueExpenses[GOPercent$RevenueExpenses == 'Utility expenses'] <- 'Utility'
+	GOPercent$RevenueExpenses[GOPercent$RevenueExpenses == 'Insurance expenses'] <- 'Insurance'
+	GOPercent$RevenueExpenses[GOPercent$RevenueExpenses == 'Rent expenses'] <- 'Rent'
+	GOPercent$RevenueExpenses[GOPercent$RevenueExpenses == 'Fertilizer and lime expenses'] <- 'Fertilizer & lime'
+	GOPercent$RevenueExpenses[GOPercent$RevenueExpenses == 'Pesticide expenses'] <- 'Pesticide'
+	GOPercent$RevenueExpenses[GOPercent$RevenueExpenses == 'Seed and plant expenses'] <- 'Seed & plant'
+	GOPercent$RevenueExpenses[GOPercent$RevenueExpenses == 'Other crop expenses'] <- 'Other crop'
+	GOPercent$RevenueExpenses[GOPercent$RevenueExpenses == 'Small tool expenses'] <- 'Small tools'
+	GOPercent$RevenueExpenses[GOPercent$RevenueExpenses == 'Net fuel expenses, machinery, truck, auto'] <- 'Fuel'
+	GOPercent$RevenueExpenses[GOPercent$RevenueExpenses == 'Repair, license and insurance expenses'] <- 'Repair, license and insurance'
+
+FigureS5A_go<-ggdraw(ggplot((GOPercent %>%
+			filter(RevenueExpenses == 'Crop'| RevenueExpenses == 'Livestock'| RevenueExpenses == 'Machinery'| RevenueExpenses == 'General') %>%
+			 filter(`Farm type`== "Oilseed and grain farming")),
+		aes(x = Year, y = PercentExpense,col = RevenueExpenses)) +
+	geom_point() +
+	geom_line() +
+	labs(x = 'Year', y = 'Fraction of total operating expenses\n(grain and oilseed farms)',col = 'Total operating expense type    ') +
+	theme(text =element_text(size =7), axis.text =element_text(size =7)) + 
+	scale_color_brewer(palette = 'Set1') ) +
+	draw_label('a',.04,.975, fontface = 'bold',size =8)
+	
+FigureS5A_all<-ggdraw(ggplot((GOPercent %>%
+			filter(RevenueExpenses == 'Crop'| RevenueExpenses == 'Livestock'| RevenueExpenses == 'Machinery'| RevenueExpenses == 'General') %>%
+			 filter(`Farm type`== "All farm types")),
+		aes(x = Year, y = PercentExpense,col = RevenueExpenses)) +
+	geom_point() +
+	geom_line() +
+	labs(x = 'Year', y = 'Fraction of total operating expenses\n(all farms)',col = 'Total operating expense type    ') +
+	theme(text =element_text(size =7), axis.text =element_text(size =7)) + 
+	scale_color_brewer(palette = 'Set1') ) +
+	draw_label('e',.04,.975, fontface = 'bold',size =8)
+
+FigureS5B_go <-ggdraw(ggplot(GOPercent %>%
+			 filter(`Farm type`== "Oilseed and grain farming") %>%
+			filter(RevenueExpenses == 'Custom work & machine rental'| RevenueExpenses == 'Net interest'| RevenueExpenses == 'Net property taxes'| RevenueExpenses == 'Building & fence repairs'| RevenueExpenses == 'Marketing'| RevenueExpenses == 'Miscellaneous'| RevenueExpenses == "Utility" | RevenueExpenses == "Insurance"| RevenueExpenses == "Rent"| RevenueExpenses == "Salaries"),
+		aes(x = Year, y =PercentExpense, fill = RevenueExpenses, col = RevenueExpenses,shape = RevenueExpenses)) +
+	geom_point() +
+	geom_line() +
+	labs(x = 'Year', y = 'Fraction of general expenses\n(grain and oilseed farms)',col = 'Expense type') +
+	scale_fill_brewer(palette = 'Paired', name = 'General Expense Type') +
+	scale_colour_brewer(palette = 'Paired', name = 'General Expense Type') +
+	scale_shape_manual(values = c(21, 22, 23, 24, 25, 21, 22, 23, 24, 25), name = 'General Expense Type') +
+	theme(text =element_text(size =7), axis.text =element_text(size =7)) + 
+	scale_x_continuous(breaks = seq(2001, 2014, by = 3))) +
+	draw_label('b',.04,.975, fontface = 'bold',size =8)
+
+FigureS5B_all <-ggdraw(ggplot(GOPercent %>%
+			 filter(`Farm type`== "All farm types") %>%
+			filter(RevenueExpenses == 'Custom work & machine rental'| RevenueExpenses == 'Net interest'| RevenueExpenses == 'Net property taxes'| RevenueExpenses == 'Building & fence repairs'| RevenueExpenses == 'Marketing'| RevenueExpenses == 'Miscellaneous'| RevenueExpenses == "Utility" | RevenueExpenses == "Insurance"| RevenueExpenses == "Rent"| RevenueExpenses == "Salaries"  ),
+		aes(x = Year, y =PercentExpense, fill = RevenueExpenses, col = RevenueExpenses,shape = RevenueExpenses)) +
+	geom_point() +
+	geom_line() +
+	labs(x = 'Year', y = 'Fraction of general expenses\n(all farms)',col = 'Expense type') +
+	scale_fill_brewer(palette = 'Paired', name = 'General Expense Type') +
+	scale_colour_brewer(palette = 'Paired', name = 'General Expense Type') +
+	scale_shape_manual(values = c(21, 22, 23, 24, 25, 21, 22, 23, 24, 25), name = 'General Expense Type') +
+	theme(text =element_text(size =7), axis.text =element_text(size =7)) + 
+	scale_x_continuous(breaks = seq(2001, 2014, by = 3))) +
+	draw_label('f',.04,.975, fontface = 'bold',size =8)
+
+FigureS5C_go <-ggdraw(ggplot(GOPercent %>%
+			 filter(`Farm type`== "Oilseed and grain farming") %>%
+			filter(RevenueExpenses == 'Fertilizer & lime'| RevenueExpenses == 'Pesticide'| RevenueExpenses == 'Seed & plant'| RevenueExpenses == 'Other crop' ),
+		aes(x = Year, y = PercentExpense, fill = RevenueExpenses, col = RevenueExpenses,shape = RevenueExpenses)) +
+	geom_point() +
+	geom_line() +
+	labs(x = 'Year', y = 'Fraction of crop expenses\n(grain and oilseed farms)',col = 'Expense type') +
+	scale_fill_brewer(palette = 'Paired', name = 'Crop Expense Type                    ') +
+	scale_colour_brewer(palette = 'Paired', name = 'Crop Expense Type                    ') +
+	scale_shape_manual(values = c(21, 22, 23, 24, 25, 21, 22, 23, 24, 25), name = 'Crop Expense Type                    ') +
+	theme(text =element_text(size =7), axis.text =element_text(size =7)) +
+	scale_x_continuous(breaks = seq(2001, 2014, by = 3))) +
+	draw_label('c',.04,.975, fontface = 'bold',size =8)
+
+FigureS5C_all <-ggdraw(ggplot(GOPercent %>%
+			 filter(`Farm type`== "All farm types") %>%
+			filter(RevenueExpenses == 'Fertilizer & lime'| RevenueExpenses == 'Pesticide'| RevenueExpenses == 'Seed & plant'| RevenueExpenses == 'Other crop' ),
+		aes(x = Year, y = PercentExpense, fill = RevenueExpenses, col = RevenueExpenses,shape = RevenueExpenses)) +
+	geom_point() +
+	geom_line() +
+	labs(x = 'Year', y = 'Fraction of crop expenses\n(all farms)',col = 'Expense type') +
+	scale_fill_brewer(palette = 'Paired', name = 'Crop Expense Type                    ') +
+	scale_colour_brewer(palette = 'Paired', name = 'Crop Expense Type                    ') +
+	scale_shape_manual(values = c(21, 22, 23, 24, 25, 21, 22, 23, 24, 25), name = 'Crop Expense Type                    ') +
+	theme(text =element_text(size =7), axis.text =element_text(size =7)) +
+	scale_x_continuous(breaks = seq(2001, 2014, by = 3))) +
+	draw_label('g',.04,.975, fontface = 'bold',size =8)
+
+FigureS5D_go <-ggdraw(ggplot(GOPercent %>%
+			 filter(`Farm type`== "Oilseed and grain farming") %>%
+			filter(RevenueExpenses == 'Fuel'| RevenueExpenses == 'Small tools'| RevenueExpenses == 'Repair, license and insurance'),
+		aes(x = Year, y = PercentExpense, fill = RevenueExpenses, col = RevenueExpenses,shape = RevenueExpenses)) +
+	geom_point() +
+	geom_line() +
+	labs(x = 'Year', y = 'Fraction of machinery expenses\n(grain and oilseed farms)',col = 'Expense type') +
+	scale_fill_brewer(palette = 'Paired', name = 'Machinery Expense Type                    ') +
+	scale_colour_brewer(palette = 'Paired', name = 'Machinery Expense Type                    ') +
+	scale_shape_manual(values = c(21, 22, 23, 24, 25, 21, 22, 23, 24, 25), name = 'Machinery Expense Type                    ') +
+	theme(text =element_text(size =7), axis.text =element_text(size =7)) +
+	scale_x_continuous(breaks = seq(2001, 2014, by = 3))) +
+	draw_label('d',.04,.975, fontface = 'bold',size =8)
+
+FigureS5D_all <-ggdraw(ggplot(GOPercent %>%
+			 filter(`Farm type`== "All farm types") %>%
+			filter(RevenueExpenses == 'Fuel'| RevenueExpenses == 'Small tools'| RevenueExpenses == 'Repair, license and insurance'),
+		aes(x = Year, y = PercentExpense, fill = RevenueExpenses, col = RevenueExpenses,shape = RevenueExpenses)) +
+	geom_point() +
+	geom_line() +
+  	theme(text =element_text(size =7), axis.text =element_text(size =7)) +
+	labs(x = 'Year', y = 'Fraction of machinery expenses\n(all farms)',col = 'Expense type') +
+	scale_fill_brewer(palette = 'Paired', name = 'Machinery Expense Type                    ') +
+	scale_colour_brewer(palette = 'Paired', name = 'Machinery Expense Type                    ') +
+	scale_shape_manual(values = c(21, 22, 23, 24, 25, 21, 22, 23, 24, 25), name = 'Machinery Expense Type                    ') +
+	theme(text =element_text(size =7), axis.text =element_text(size =7)) +
+	scale_x_continuous(breaks = seq(2001, 2014, by = 3))) +
+	draw_label('h',.04,.975, fontface = 'bold',size =8)
+```
+
+
+```{r eval = T, warning=F, echo=F, fig.width=20, fig.height =20}
+FigureS5<-grid.arrange(FigureS5A_go,FigureS5B_go,FigureS5C_go, FigureS5D_go,
+                       ncol =1, nrow=4,layout_matrix =rbind(c(1),c(2),c(3),c(4)),widths = c(5),heights = c(1,1,1,1))
+ggsave("/Users/ellen/Dropbox/Marginal lands synthesis/figures/FigureS5.pdf",FigureS5,dpi=600,width=15,height =23,units = 'cm')
+```
+
+
+## CRP rental rates, inflation adjusted
+```{r CRPrental, echo=F, warning=F}
+crp <- read_xlsx('./CRP Enrollment and Rental Payment History by County 198602017.xlsx',sheet = 'AVERAGE',skip=2) %>%
+  filter(STATE== 'U.S.') %>%
+  gather(Year,Rental,-STATE) %>%
+  mutate(Year=as.numeric(Year),Rental =as.numeric(Rental)) %>%
+  left_join(US_cpi) %>%
+  mutate(Rental_ha=Rental/2.47105) %>%
+  mutate(Rental_acre_2018USD=(USD2018/CPI)*Rental) %>% 
+  mutate(Rental_ha_2018USD =Rental_acre_2018USD/2.47105)
+
+CRPFIG<-crp %>% ggplot(aes(x = Year, y =Rental_ha_2018USD)) +
+  geom_point() +
+  	theme(text =element_text(size =7), axis.text =element_text(size =7)) +
+  labs(x = 'Year', y = 'CRP payments (2018 USD/ha)')
+
+ggsave("/Users/ellen/Dropbox/Marginal lands synthesis/figures/crp.pdf",CRPFIG,dpi=600,width=10,height =8,units = 'cm')
+
+filter(crp,Year==2017)
+```
+
+
+```{r spiderplot, include =F}
+old<- read_csv('./32100278.csv') %>%
+  filter(GEO== 'Canada') %>%
+	mutate(Cost =ifelse(SCALAR_ID==0,VALUE,(ifelse(SCALAR_ID==3,(VALUE*1000),NA)))) %>%
+	rename(Year=REF_DATE,Geography =GEO) %>%
+	select(Geography,Year,`Expenses and rebates`,Cost) %>% 
+	spread(`Expenses and rebates`,Cost) %>%
+	rename(`Fertilizer and lime`=`Fertilizer and limestone`) %>%
+	mutate(`Pesticides`=if_else(is.na(Pesticides),(`Pesticides and containers` - ifelse(is.na(`Containers`),0,`Containers`)), Pesticides)) %>%
+	gather(`Expenses and rebates`,Cost,-Geography,-Year) %>%
+	select(Geography,Year,`Expenses and rebates`,Cost) %>%
+  mutate(Time = 'historic')
+
+new<- read_csv('./32100049.csv', na= "..") %>%
+  filter(GEO== 'Canada') %>%
+	mutate(Cost =ifelse(SCALAR_ID==0,VALUE,(ifelse(SCALAR_ID==3,(VALUE*1000),NA)))) %>%
+	rename(Year=REF_DATE,Geography =GEO) %>%
+	select(Geography,Year,`Expenses and rebates`,Cost) %>% 
+	spread(`Expenses and rebates`,Cost) %>%
+	mutate(`Fertilizer and lime`=
+	         if_else(is.na(`Fertilizer and lime`),(`Fertilizer, after rebates` + `Fertilizer rebates` + `Lime, after rebates` + `Lime rebates`),`Fertilizer and lime`)) %>%
+	mutate(`Pesticides`=
+	         if_else(is.na(`Pesticides`),(`Pesticides, after rebates` + `Pesticide rebates`),`Pesticides`)) %>%
+	mutate(`Total expenses before rebates`=
+	         if_else(is.na(`Total expenses before rebates`),(`Total rebates` + `Total expenses after rebates`),`Total expenses before rebates`)) %>%
+	mutate(`Cash wages, room and board, before rebates`=
+	         if_else(is.na(`Cash wages, room and board, before rebates`),(`Cash wages, after rebates` + ifelse(is.na(`Cash wage rebates`),0,`Cash wage rebates`)),`Cash wages, room and board, before rebates`)) %>%
+	mutate(`Commercial seed`=
+	         if_else(is.na(`Commercial seed`),(`Commercial seed, after rebates` + `Commercial seed rebates`),`Commercial seed`)) %>%
+  mutate(`Machinery fuel` = 
+           ifelse(is.na(`Machinery fuel`), (`Machinery fuel, after rebates` + `Machinery fuel rebates`), `Machinery fuel`)) %>%
+  mutate(`Commercial feed` = 
+           ifelse(is.na(`Commercial feed`), (`Commercial feed, after rebates` + `Commercial feed rebates`), `Commercial feed`)) %>%
+  mutate(`Interest` = ifelse(is.na(`Interest`), (`Interest, after rebates` + `Interest rebates`), `Interest`)) %>%
+	gather(`Expenses and rebates`,Cost,-Geography,-Year) %>%
+	select(Geography,Year,`Expenses and rebates`,Cost) %>%
+  mutate(Time = 'current')
+
+code <- read_xlsx('./aggregated expense codes.xlsx')
+
+test<- bind_rows(old, new) %>%
+  full_join(code) %>%
+	left_join(CAN_cpi) %>%
+	mutate(truedol =(CAD2018/value)*Cost  ) %>%
+	filter(!is.na(Cost)) %>%
+  filter(AG_CAT!= 'Labor_rm', AG_CAT!= 'Fertilizer_rm')
+
+(test) %>% group_by(`AG_CAT`) %>% summarise(min(Year))
+(test) %>% group_by(`AG_CAT`, `Expenses and rebates`, AGGREGATE) %>% summarise(min(Year))
+
+FullCosts<-(test %>%
+  #filter(!is.na(AG_CAT), AG_CAT!= 'Labor_rm') %>%
+  filter(AG_CAT!= 'Depreciation') %>%
+  group_by(AG_CAT,Year) %>%
+  summarise(COST = sum(Cost, na.rm = T)) %>%
+  ggplot(aes(x = Year, y =(COST/1000000), col = AG_CAT, fill = AG_CAT,  shape = AG_CAT)) +
+  geom_point() +
+   	theme(text =element_text(size =7), axis.text =element_text(size =7)) +
+ labs(y = "Inflation-adjusted cost \n(2018 USD, millions)",col = "Category",shape = "Category", fill = "Category") +
+  geom_line() +
+  	scale_color_brewer(palette = 'Paired') +
+  	scale_fill_brewer(palette = 'Paired') +
+  	scale_shape_manual(values = c(21, 22, 23, 24, 25, 21, 22, 23, 24, 25))   +
+  theme_cowplot())#+
+#  	scale_y_continuous(trans =log_trans(), breaks =base_breaks() ,labels =prettyNum)
+
+```
+
+```{r echo=F, fig.height =6, fig.width=6}
+ FullCosts
+ ggsave("/Users/ellen/Dropbox/Marginal lands synthesis/figures/fullcosts.pdf", FullCosts,dpi=600,width=18,height =13,units = 'cm')
+```
+
+```{r fig.height =6, fig.width=10, echo=F}
+ ggplot(CAN_fraction, aes(x = Year, y =Fraction, fill =Crop)) +geom_bar(stat = 'identity') +theme_cowplot()
+```
+
+
+
+To make sure not cherry picking things:
+
+Fuel is excluded as reporting begins in 1951. 
+Irrigation reporting begins in 1938
+Seed costs begin in 1926
+Pesticide costs begin in 1926
+
+
+
+
+# Subsidies
+```{r subsidies}
+# https://stats.oecd.org/viewhtml.aspx?QueryId=89907&vh=0000&vf=0&l&il=&lang=en
+subsidies <- read_csv("./MON2019_REFERENCE_TABLE_27112019173937541.csv") %>%
+  filter(Measure == "US Dollar",
+         Country == "Canada") %>%
+  mutate(Subsidies = Value * 10^`PowerCode Code`) %>%
+  rename(Year = TIME) %>%
+    left_join(US_cpi) %>%
+  mutate(Subsidy_2018USD=(USD2018/CPI)*Subsidies)  
+subsidyfig <- subsidies %>% ggplot(aes(x=Year, y=(Subsidy_2018USD/1e9), col=Country))+
+  geom_point() +geom_line() +
+  theme_cowplot()+
+  labs(y = "Subsidy to farms\n(2018 USD, billions)", title = "ALL farms, animal, crop, etc.")
+ ggsave("/Users/ellen/Dropbox/Marginal lands synthesis/figures/CanadaSubsdies.pdf", subsidyfig,dpi=600,width=18,height =8,units = 'cm')
+
+```
+
+# American subsidies and profit
+```{r}
+ProfitLessSubsidies <- finbin %>% 
+  filter(Measurement=='Net return over lbr & mgt'|Measurement=="Government payments") %>%
+    mutate(ValuePerHA = Value * 2.47105) %>%
+  select(-Value) %>%
+  pivot_wider(names_from = Measurement, values_from = ValuePerHA) %>%
+  rowwise() %>%
+  mutate("Profit without subsidies" = `Net return over lbr & mgt` - `Government payments` )
+  
+ProfitLessSubsidies %>% summary()
+
+FigS3A <- ggdraw(ProfitLessSubsidies %>%
+  ggplot(aes(x = Year, y = `Government payments`)) +
+   geom_point(aes(col=Crop, shape= Crop, fill = Crop), size=.5)+
+  geom_line(aes(col=Crop, shape= Crop, fill = Crop),lwd=.2) +
+  theme_cowplot()+
+    scale_fill_brewer(palette = 'Paired') +
+    scale_color_brewer(palette = 'Paired') +
+	scale_shape_manual(values = c(21, 22, 23, 24, 25, 21, 22, 23, 24, 25)) +
+    scale_x_continuous(breaks = c(1995, 2000, 2005, 2010, 2015)) +
+	guides(color=guide_legend(override.aes =list(size =1))) +
+	theme(text =element_text(size =7), axis.text =element_text(size =7)) +
+	theme(legend.key.size = unit(.5,"line")) +
+    labs(y = "Government subsidies\n(2018 USD/ha)")+
+	  theme(legend.position = c(.6,.75),        
+	     legend.box.background=element_rect(),
+        legend.spacing=unit(.8,'cm'),
+        text =element_text(size =7),
+        axis.text =element_text(size =7),
+        legend.key.size =unit(.1,'cm'),
+        legend.margin=margin(c(1,1,1, 2))) +
+	theme(plot.margin = margin(0.3,.2,0,.3, "cm")) +
+  guides(color=guide_legend(override.aes =list(size =.8)), 
+         fill =guide_legend(override.aes =list(size =.8)),shape =guide_legend(override.aes =list(size =.8))))+
+            draw_label('a',.04,.925, fontface = 'bold',size =9)
+
+FigS3B <- ggdraw(ProfitLessSubsidies %>%
+  ggplot(aes(x = Year, y = `Profit without subsidies`)) +
+    geom_hline(yintercept = 0)+
+   geom_point(aes(col=Crop, shape= Crop, fill = Crop), size=.5)+
+  geom_line(aes(col=Crop, shape= Crop, fill = Crop),lwd=.2) +
+  theme_cowplot()+
+    scale_fill_brewer(palette = 'Paired') +
+    scale_color_brewer(palette = 'Paired') +
+	scale_shape_manual(values = c(21, 22, 23, 24, 25, 21, 22, 23, 24, 25)) +
+    scale_x_continuous(breaks = c(1995, 2000, 2005, 2010, 2015)) +
+	guides(col=F, shape = F, fill = F) +
+	theme(text =element_text(size =7), axis.text =element_text(size =7)) +
+	theme(legend.key.size = unit(.5,"line")) +
+  labs(y = "Profit without subsidies\n(2018 USD/ha)")+
+	theme(plot.margin = margin(0.3,.2,0,.3, "cm")) ) +
+          draw_label('b',.04,.925, fontface = 'bold',size =9)
+
+FigS3<-grid.arrange(FigS3A,FigS3B, ncol =1, nrow=2,layout_matrix =rbind(c(1),c(2)),widths = c(1),heights = c(1,1))
+ggsave("/Users/ellen/Dropbox/Marginal lands synthesis/figures/FigS3.pdf", FigS3,dpi=600,width=8,height =12,units = 'cm')
+
+```
