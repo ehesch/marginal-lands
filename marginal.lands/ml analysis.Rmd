@@ -1,6 +1,6 @@
 ---
 title: "Supplemental Methods: Rising agricultural input costs foreshadows challenges for sustainable food production"
-author: "Ellen Esch, "
+author: "Ellen Esch, " 
 date: "`r format(Sys.time(), '%d %B %Y')`"
 
 output:
